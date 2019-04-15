@@ -1,0 +1,82 @@
+//encendido de seis leds con pulsador que avanza dos posiciones al pulsar
+
+/*
+ *  Ejercicio 6
+ *  Wayar Joel
+ */
+
+#define AddrFIO0DIR  0X2009C000  //Define las posiciones de memoria
+#define AddrFIO0SET  0X2009C018  // donde se encuentran los registros
+#define AddrFIO0CLR  0X2009C01C  // a configura para el GPIO0
+#define AddrFIO0PIN  0X2009C014
+#define AddrFIO0MASK 0X2009C010
+#define AddrPINMODE0 0X2009C040 // Config PinMode del GPIO0, pines del 0 al 15
+
+/* Definir Puertos a las direcciones
+ * de memoria por las correspondientes constantes:
+ */
+unsigned int volatile *const FIO0DIR  = (unsigned int*) AddrFIO0DIR;
+unsigned int volatile *const FIO0SET  = (unsigned int*) AddrFIO0SET;
+unsigned int volatile *const FIO0CLR  = (unsigned int*) AddrFIO0CLR;
+unsigned int volatile *const FIO0PIN  = (unsigned int*) AddrFIO0PIN;
+unsigned int volatile *const FIO0MASK = (unsigned int*) AddrFIO0MASK;
+unsigned int volatile *const PINMODE0 = (unsigned int*) AddrPINMODE0;
+// función retardo
+int retardo(unsigned int time){
+	unsigned int i;
+	for (i=0; i<time; i++); // lazo de demora
+	return 0;
+}
+
+int main(void){
+	// Configuración:
+		*FIO0DIR |= (1<<22); 		// define el pin22 del P0 como salida
+		*FIO0DIR &= ~(1<<0); 		// defino el pin0 del P0 como entrada
+									//		(aunque por defecto amanecen como InPut)
+		*FIO0MASK = ( 0xFFFF & ~(1<<0) & ~(1<<22) ); // 1: enmascarar LOS PINES QUE NO USO con el objetivo de que
+		// no cambie y se pueda usar el FIOPIN PARA SABER EN QUE CONDICION ESTAN LAS SALIDAS PUDIENDO ASI DE ESTA
+		//MANERA MANIPULAR LAS SALIDAS
+
+		//--PullUp Habilitadas en las entradas ,por defecto!
+		*PINMODE0 &= ~(0x03<<0); // Set "00" para habilitar Pul-Up en P0[0]
+
+		unsigned timeMax= 364500 ; 	// tiempo max, frec min
+		unsigned timeMin= 36450 ; 	// tiempo min, frec max
+		unsigned time_antiRebote= 1000; // tiempo para inhibir el rebote (fijado a prueba y error)
+		// Acción principal:
+		while (1){
+			for ( unsigned int time=timeMax ; time>timeMin; time=time*0.9)
+			{
+				//-- P0[22] en alto
+				*FIO0SET |= (1<<22);
+				//-- delay
+				retardo(time);
+
+				//--Pregunto!
+				if( !(*FIO0PIN & (1<<0))) // se pulsó?
+				{
+					retardo(time_antiRebote); //si!, espero a que deje de rebotar y vuelvo a preguntar
+					while(!(*FIO0PIN & (1<<0)));//es como el do while
+					// vease que se usa el punto y coma para detenerlo si es verdader toda condicion se hace
+					//falso y se queda ahi se congela EL FIOPIN LEE ESEL ESTADO DE LOS PUERTOS EN ESTE CASO
+					//VA  A LEER LOS PINES DEL PUERTO 0 Y TODOS SUS PINES
+					// mientras se mantiene pulsado, detiene el parpadeo! (se queda en espera)
+				}
+				///////////////////////////////////////////////////////////////////////////
+
+				//-- P0[22] en bajo
+				*FIO0CLR |= (1<<22);
+				//-- delay
+				retardo(time);
+
+				//--Pregunto!
+				if( !(*FIO0PIN & (1<<0)) ) // se pulsó?
+				{
+					retardo(time_antiRebote); //si!, espero a que deje de rebotar y vuelvo a preguntar
+					while(!(*FIO0PIN & (1<<0)));
+					// mientras se mantiene pulsado, detiene el parpadeo! (se queda en espera)
+				}
+
+			}
+		}
+}

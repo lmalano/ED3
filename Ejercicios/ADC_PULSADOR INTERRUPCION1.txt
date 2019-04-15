@@ -1,0 +1,166 @@
+
+/*
+===============================================================================
+ Name        : Adc_enviar.c
+              Concepcion Alvarado Ian Erik
+ Author      : $(author)
+ Version     :
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+                                  //PINSEL4 0x4002 C010
+#define AddrFIO0DIR 0x2009C000 // Define las posiciones de memorias
+ #define AddrPINSEL4  0x4002C010
+  #define AddrIO2IntEnF 0x400280B4   //IO2IntEnF 0x4002 80B4
+  #define AddrIO2IntClr  0x400280AC   //IO2IntClr - 0x4002 80AC)
+
+#define AddrFIO0SET 0x2009C018 // donde se encuentran los registros
+#define AddrFIO0CLR 0x2009C01C // que configuran al GPIO0
+#define AddrPCONP 0x400FC0C4
+#define AddrAD0CR 0x40034000
+#define AddrAD0INTEN 0x4003400C
+#define AddrPINMODE1 0x4002C044
+#define AddrPINSEL1 0x4002C004
+#define AddrAD0DR0 0x40034010
+#define AddrPCLKSEL0 0x400FC1A8
+#define AddrISER0 0xE000E100 //pagina 79
+ #define AddrAD0STAT  0x40034030                                            //ADSTAT - 0x4003 4030)
+//#define AddrAD0GDR 0x40034004
+
+
+unsigned int volatile * const IO2IntClr  = (unsigned int *) AddrIO2IntClr;
+unsigned int volatile * const IO2IntEnF  = (unsigned int *) AddrIO2IntEnF;
+unsigned int volatile * const PINSEL4 = (unsigned int *) AddrPINSEL4;
+unsigned int volatile * const FIO0DIR = (unsigned int *) AddrFIO0DIR;
+unsigned int volatile * const FIO0SET = (unsigned int *) AddrFIO0SET;
+unsigned int volatile * const FIO0CLR = (unsigned int *) AddrFIO0CLR;
+unsigned int volatile * const PCONP = (unsigned int *) AddrPCONP;
+unsigned int volatile * const AD0CR = (unsigned int *) AddrAD0CR;
+unsigned int volatile * const AD0INTEN = (unsigned int *) AddrAD0INTEN;
+unsigned int volatile * const PINMODE1 = (unsigned int *) AddrPINMODE1;
+unsigned int volatile * const PINSEL1 = (unsigned int *) AddrPINSEL1;
+unsigned int volatile * const AD0DR0 = (unsigned int *) AddrAD0DR0;
+unsigned int volatile * const PCLKSEL0 = (unsigned int *) AddrPCLKSEL0;
+unsigned int volatile * const ISER0 = (unsigned int *) AddrISER0;
+unsigned int volatile * const AD0STAT = (unsigned int *) AddrAD0STAT;   //  ADSTAT - 0x4003 4030)                                                                    //ADSTAT - 0x4003 4030)
+//unsigned int volatile * const AD0GDR = (unsigned int *) AddrAD0GDR;
+
+void adcConfig(void);
+void ADC_IRQHandler(void);
+int main(void) {
+// unsigned short volatile ADC0Value=0;
+adcConfig();
+*FIO0DIR |= (1<<22);
+while(1) {
+// ADC0Value = (*AD0DR0>>4) & 0xFFF;
+// if(ADC0Value<2047)
+// *FIO0SET |= (1 << 22);
+// else
+// *FIO0CLR |= (1 << 22);
+ }
+ return 0 ;
+}
+void adcConfig()
+{
+//1. Power: In the PCONP register (Table 46), set the PCADC bit.
+*PCONP |=(1<<12); //Power Control for Peripherals Register.
+*AD0CR|=1<<21; //The A/D converter is operational.
+//2. Clock: In the PCLKSEL0 register (Table 40), select PCLK_ADC. To scale the clock for the ADC, see bits CLKDIV in Table 532.
+*PCLKSEL0 |= (3<<24);
+
+*AD0CR &= ~(255<<8); /*The APB clock (PCLK_ADC0) is divided by (this value plus one) to produce the clock for
+the A/D converter, which should be less than or equal to 13 MHz.*/
+//======================================================================
+//*AD0CR|=1<<16; /* ESTA EN MODO BURSTThe AD converter does repeated conversions at up to 200 kHz, scanning (if necessary)
+//through the pins selected by bits set to ones in the SEL field.*/
+//3. Pins: Enable ADC0 pins through PINSEL registers. Select the pin modes for the port pins with ADC0 functions through the
+//==================================================================================
+*AD0CR &= ~(1<<16);//deshabilito el modo Burst
+*AD0CR |= (0b010<<24);//010 Start conversion when the edge selected by bit 27 occurs on the P2.10 / EINT0 / NMI pin.
+                   //Set the pin function to EINT0 in PINSEL4 register
+
+  *PINSEL4 |= (1 << 20)  ;                       //21:20 P2.[10]=H[51] GPIO Port 2.10 EINT0 funcion [01]Entrada de interrupción externa 0 - Un nivel activo bajo / alto o descendente / ascendente
+                                                 //borde de entrada de interrupción de propósito general. Este pin puede ser usado para despertar.
+                                                   //El procesador de los modos de suspensión, suspensión profunda o apagado.
+  //18 ISE_EINT0 External Interrupt 0 Interrupt Enable. See functional description for bit 0.
+
+  *ISER0 |= (1 << 18);//HABILITO EINTO
+                       //10 P2.10EF Enable falling edge interrupt for P2.10
+   *IO2IntEnF |=(1 << 10 );                      //Table 118. GPIO Interrupt Enable for port 2 Falling Edge (IO2IntEnF - 0x4002 80B4) bit
+//================================================================================================
+
+
+//PINMODE registers (Section 8.5).
+*PINMODE1 |= 1<<15; //Pin has neither pull-up nor pull-down resistor enabled.
+*PINSEL1 |= 1<<14;//P0[23] CANAL 0 H[15]
+//4. Interrupts: To enable interrupts in the ADC, see Table 536. Interrupts are enabled in the NVIC using the appropriate Interrupt
+//Set Enable register.
+*AD0INTEN=1; // *ADOINTEN |= (1 << 0)This register allows control over which A/D channels generate an interrupt when a conversion is
+//complete.
+/*
+ *  Este registro permite el control sobre qué canales A / D generan una interrupción cuando un
+la conversión está completa Por ejemplo, puede ser conveniente usar algunos canales A / D para
+Monitorear los sensores mediante la realización continua de conversiones en ellos. El más reciente
+Los resultados son leídos por el programa de aplicación siempre que son necesarios. En este caso, un
+la interrupción no es deseable al final de cada conversión para algunos canales A / D
+ *
+ *
+ */
+ //Completion of a conversion on ADC channel 0 will not generate an interrupt.
+*ISER0|=(1<<22); //ADC Interrupt Enable.
+}
+
+//===============================================================================================================
+
+
+void EINT0_IRQHandler(void){
+
+	if((*IO2IntEnF>>10)&1){//  EJECUTA LA INTERRUPCION  EN EL PIN P2.[10]=H[51]
+
+		unsigned short volatile ADC0Value=0;
+		ADC0Value = (*AD0DR0>>4) & 0xFFF;//RESULT
+		if(ADC0Value<2047)
+		*FIO0SET|= (1 << 22);
+		else
+		*FIO0CLR |= (1 << 22);
+	}
+
+	while ( !( *AD0DR0 << 31 ) ) ////DONE = 1 SE TERMINO LA CONVERSION SE PONE EN 1
+
+		{
+
+
+		}
+		*AD0STAT |= (1 << 0);
+						*AD0STAT  |= (1 << 16);
+
+
+
+	*IO2IntClr|=(1<<10);//levanto la bandera
+
+
+	/*
+	 * AD0STATUS
+	 * El registro de estado A / D permite verificar el estado de todos los canales A / D simultáneamente.
+Los indicadores DONE y OVERRUN que aparecen en el registro ADDRn para cada canal A / D
+se reflejan en ADSTAT. También se encuentra la bandera de interrupción (el OR lógico de todas las banderas HECHAS)
+en ADSTAT
+//ADINT QUE PERTENECE AL AD0STATUS EL BIT 16 Este bit es el indicador de interrupción A / D. Es uno cuando cualquiera de los canales A / D individuales Hecho
+los indicadores están activados y habilitados para contribuir a la interrupción A / D a través del registro ADINTEN.
+==========================================================================================
+
+
+=====================================================================================================
+	 *
+	 */
+}
+
+
+
+
+
+
+
+
+

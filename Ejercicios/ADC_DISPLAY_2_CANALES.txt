@@ -1,0 +1,261 @@
+//ADC_DISPLAY_2_CANALES
+
+//MULTIPLEXADO DE DISPLAY
+#define AddrFIO0DIR 0x2009C000 //Define las posiciones de memorias
+
+#define AddrFIO0SET 0x2009C018 //donde se encuentran los registros
+#define AddrFIO0CLR 0x2009C01C // que configuran al GPIO0
+
+#define AddrFIO2DIR 0X2009C040
+#define AddrFIO2SET 0X2009C058
+#define AddrFIO2CLR 0x2009C05C
+#define AddrFIO2PIN 0x2009C054
+
+#define AddrPCONP 0X400FC0C4
+#define AddrPCLKSEL0 0X400FC1A8
+#define AddrPINSEL3 0X4002C00C
+//-------ADC0-----------
+#define AddrAD0CR 0x40034000
+#define AddrAD0INTEN 0x4003400C
+#define AddrPINMODE1 0x4002C044
+#define AddrPINSEL1 0x4002C004
+#define AddrAD0DR0 0x40034010
+#define AddrISER0 0xE000E100  //pagina 79
+#define AddrAD0DR1 0x40034014
+#define AddrAD0STAT 0x40034030
+//#define AddrAD0GDR 0x40034004
+
+//------TIMER1-----------
+#define AddrT1EMR 0X4000803C
+#define AddrT1MCR 0X40008014
+#define AddrT1MR0 0X40008018
+#define AddrT1TCR 0X40008004
+#define AddrT1IR 0X40008000
+#define AddrT1PR 0X4000800C
+
+unsigned int volatile *const FIO0DIR=(unsigned int*)AddrFIO0DIR;
+unsigned int volatile *const FIO0SET=(unsigned int*)AddrFIO0SET;
+unsigned int volatile *const FIO0CLR=(unsigned int*)AddrFIO0CLR;
+
+unsigned int volatile *const FIO2DIR= (unsigned int*) AddrFIO2DIR;
+unsigned int volatile *const FIO2SET= (unsigned int*) AddrFIO2SET;
+unsigned int volatile *const FIO2CLR= (unsigned int*) AddrFIO2CLR;
+unsigned int volatile *const FIO2PIN= (unsigned int*) AddrFIO2PIN;
+
+unsigned int volatile *const PCONP=(unsigned int*)AddrPCONP;
+unsigned int volatile *const PCLKSEL0=(unsigned int*)AddrPCLKSEL0;
+unsigned int volatile *const PINSEL3=(unsigned int*)AddrPINSEL3;
+
+unsigned int volatile *const AD0CR=(unsigned int*)AddrAD0CR;
+unsigned int volatile *const AD0INTEN=(unsigned int*)AddrAD0INTEN;
+unsigned int volatile *const PINMODE1=(unsigned int*)AddrPINMODE1;
+unsigned int volatile *const PINSEL1=(unsigned int*)AddrPINSEL1;
+unsigned int volatile *const AD0DR0=(unsigned int*)AddrAD0DR0;
+unsigned int volatile *const AD0DR1=(unsigned int*)AddrAD0DR1;
+unsigned int volatile *const ISER0=(unsigned int*)AddrISER0;
+unsigned int volatile *const AD0STAT=(unsigned int*)AddrAD0STAT;
+//unsigned int volatile *const AD0GDR=(unsigned int*)AddrAD0GDR;
+
+unsigned int volatile *const T1EMR=(unsigned int*)AddrT1EMR;
+unsigned int volatile *const T1MCR=(unsigned int*)AddrT1MCR;
+unsigned int volatile *const T1MR0=(unsigned int*)AddrT1MR0;
+unsigned int volatile *const T1TCR=(unsigned int*)AddrT1TCR;
+unsigned int volatile *const T1IR=(unsigned int*)AddrT1IR;
+unsigned int volatile *const T1PR=(unsigned int*)AddrT1PR;
+
+void adcConfig(void);
+void timer1Config(void);
+void ADC_IRQHandler(void);
+
+unsigned int decenas,unidades;
+int main(void){
+//	unsigned short volatile ADC0Value=0;
+	adcConfig();
+	timer1Config();
+	*FIO0DIR|=(1<<22);
+
+	decenas=0;
+	unidades=0;
+	*FIO2DIR |=255;//aQUI ESTABLECE LOS DISPLAY a b c d e f g h SALIDAS
+	//FIOxDIR0 Fast GPIO Port x Direction
+//registro de control 0. Bit 0 en
+//El registro FIOxDIR0 corresponde
+//para fijar Px.0 ... bit 7 en el pin Px.7.P2[0],P2[1],P2[3],P2[4],P2[5],P2[6],P2[7],P2[8],
+	//
+	//
+
+	while(1){
+//		ADC0Value=(*AD0DR0>>4)&0xFFF;
+//		if(ADC0Value<2047)
+//			*FIO0SET|=(1<<22);
+//		else
+//			*FIO0CLR|=(1<<22);
+	}
+	return 0;
+}
+
+void adcConfig(){
+//1.Power: In the PCONP register (Table46), set the PCADC bit.
+	*PCONP|=(1<<12); //Power Control for Peripherals Register.
+	*AD0CR|=(1<<21);//the A/D converter is operational.
+//2.Clock: In the PCLKSEL0 register (Table 40), select PCLK_ADC. To scale the clock for the ADC, see bits CLKDIV in Table 532.
+	*PCLKSEL0|=(3<<24);
+	*AD0CR&=~(255<<8); /*The APB clock (PCLK_ADC0) is divided by (this value plus one) to produce the clock for
+						the A/D converter, which should be less than or equal to 13MHz.*/
+	*AD0CR|=(1<<16); /*The AD converter does repeated conversions at up to 200Khz, scanning (if necessary)
+						through the pins selected by bits set to ones in the SEL field.*/
+//3.Pins: Enable ADCo pins through PINSEL registers.Select the pin modes for the port pins with ADC0 functions through the PINMODE registers (Section 8.5).
+	*AD0CR|=3;
+	*PINMODE1|=(1<<15);
+	*PINSEL1|=(1<<14);
+
+	*PINMODE1|=(1<<17);
+	*PINSEL1|=(1<<16);
+//4.Interrupts: To enable interrupts in the ADC, see Table 536. Interrupts are enabled in the NVIC using the appropriate Interrupt Set Enable register.
+	*AD0INTEN=3; //This register allows control over which A/D channels generate an interrupt when a conversion is complete.
+	//Completion of a conversion on ADC channel 0 will not generate an interrupt.
+	*ISER0|=(1<<22); //ADC Interrupt Enable.
+}
+
+void timer1Config(){
+	*PCONP|=(3<<1);		//enciendo el periferico del timer
+	*PCLKSEL0|=(3<<4);	//peripheral clock: system clock
+	*PINSEL3|=(3<<12);	//pins: match1.0
+	*PINSEL3|=(3<<18);	//pins: match1.1
+	*T1EMR|=(15<<4);
+	*T1EMR|=1;
+	*T1EMR&=~(1<<1);
+	*T1MCR|=3;			//reset on MR0 the TC will be reset if MR0 matches it. interrup on MR0: an interrup is
+						//generated when MR0 matches the value in the TC
+	*T1MR0=6450;		//match register 0
+	*ISER0|=(1<<2);
+	*T1TCR|=1;			//habilito el registro del control del timer
+}
+
+void ADC_IRQHandler(void){
+	unsigned short volatile ADC0Value0=0;
+	unsigned short volatile ADC0Value1=0;
+	if ((*AD0STAT&1)==1){
+		ADC0Value0=(*AD0DR0>>4)&0xFFF;
+		if(ADC0Value0<2047)
+			*FIO0SET|=(1<<22);
+		else
+			*FIO0CLR|=(1<<22);
+	}
+	if(((*AD0STAT>>1)&1)==1){
+		ADC0Value1=(*AD0DR1>>4)&0xFFF;
+		ADC0Value1=ADC0Value1/122;
+		decenas=0;
+		unidades=0;
+		while(ADC0Value1>=10){
+			ADC0Value1=ADC0Value1-10;
+			decenas++;
+		}
+		unidades=ADC0Value1;
+	}
+}
+
+void TIMER1_IRQHandler(void){
+	if((*T1EMR&1)==1){
+		switch (decenas){
+				case 0 :
+					*FIO2CLR|=255; // 0B11111111  como telon de fondo apago todos los segmentos del display
+					*FIO2SET|=191; // 0B10111111 FEl Display funciona con logica positiva es decir por las salidas envia 1
+					break;
+				case 1 :
+					*FIO2CLR|=255;
+					*FIO2SET|=134; //0b10000110 es el numero 1
+					break;
+				case 2 :
+					*FIO2CLR|=255;
+					*FIO2SET|=219;
+					break;
+				case 3 :
+					*FIO2CLR|=255;
+					*FIO2SET|=207;
+					break;
+				case 4 :
+					*FIO2CLR|=255;
+					*FIO2SET|=230;
+					break;
+				case 5 :
+					*FIO2CLR|=255;
+					*FIO2SET|=237;
+					break;
+				case 6 :
+					*FIO2CLR|=255;
+					*FIO2SET|=253;
+					break;
+				case 7 :
+					*FIO2CLR|=255;
+					*FIO2SET|=135;
+					break;
+				case 8 :
+					*FIO2SET|=255;
+					break;
+				case 9 :
+					*FIO2CLR|=255;
+					*FIO2SET|=231;
+					break;  //cambia flanco de bajada
+				}
+	}
+	if(((*T1EMR>>1)&1)==1){ //Registro de coincidencia externa. El EMR controla los pines de coincidencia externos
+                               //MATn.0-3 (MAT0.0-3 y MAT1.0-3 respectivamente
+		                          //Salida Salida de coincidencia externa: cuando un registro de coincidencia (MR3: 0) es igual al contador de temporizador (TC), esta salida puede
+//ya sea alternar, ir a bajo, ir a lo alto o no hacer nada. El Registro de compatibilidad externa (EMR) controla el
+//funcionalidad de esta salida. La funcionalidad Match Output se puede seleccionar en varios pines en paralelo
+		//Señales de captura de entrada: se puede configurar una transición en un pin de captura para cargar uno de los registros de captura
+//con el valor en el Contador de Tiempo y opcionalmente genera una interrupción. La funcionalidad de captura puede ser
+//seleccionado de una serie de pines. Cuando se selecciona más de un pin para una entrada Capture en un solo
+//TIMER0 / 1 canal, se utiliza el pin con el número de puerto más bajo
+//El bloque Temporizador / Contador puede seleccionar una señal de captura como fuente de reloj en lugar del reloj derivado de PCLK. Para más detalles, ver la Sección 21.6.3.
+		switch (unidades){
+				case 0 :
+					*FIO2CLR|=255;
+					*FIO2SET|=63;
+					break;
+				case 1 :
+					*FIO2CLR|=255;
+					*FIO2SET|=6;
+					break;
+				case 2 :
+					*FIO2CLR|=255;
+					*FIO2SET|=91;
+					break;
+				case 3 :
+					*FIO2CLR|=255;
+					*FIO2SET|=79;
+					break;
+				case 4 :
+					*FIO2CLR|=255;
+					*FIO2SET|=102;
+					break;
+				case 5 :
+					*FIO2CLR|=255;
+					*FIO2SET|=109;
+					break;
+				case 6 :
+					*FIO2CLR|=255;
+					*FIO2SET|=125;
+					break;
+				case 7 :
+					*FIO2CLR|=255;
+					*FIO2SET|=7;
+					break;
+				case 8 :
+					*FIO2CLR|=255;
+					*FIO2SET|=127;
+					break;
+				case 9 :
+					*FIO2CLR|=255;
+					*FIO2SET|=103;
+					break;  //cambia flanco de bajada
+				}
+	}
+	*T1IR|=1;				//MR0 interrupt flag for match channel 0
+	                         //1 MR1 Interrupt Interrupt flag for match channel 1.TENGO QUE VOLVER A PONER 1 PARA QUE VUELVA A INTERRUMPIR
+}
+//El registro de interrupción consta de 4 bits para las interrupciones de coincidencia y 4 bits para la captura
+//interrumpe Si se genera una interrupción, entonces el bit correspondiente en el IR será alto.
+//De lo contrario, el bit será bajo. Escribir una lógica uno en el bit IR correspondiente restablecerá el
+//interrumpir. Escribir un cero no tiene efecto. El acto de borrar una interrupción para una coincidencia de temporizador también borra cualquier solicitud de DMA correspondiente.

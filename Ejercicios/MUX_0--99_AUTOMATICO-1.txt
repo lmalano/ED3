@@ -1,0 +1,236 @@
+//CONTADOR MULTIPLEXOR AUTOMATICO DE 0 AL 99
+
+/*
+===============================================================================
+ Name        : MUX_AUTOMATICO.c
+ Author      : $(author)
+ Version     :
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+
+#define AddrFIO0DIR 0x2009C000
+#define AddrPINMODE0 0X2009C040
+#define AddrFIO0MASK 0X2009C010
+#define AddrFIO0SET 0x2009C018
+#define AddrFIO0CLR 0x2009C01C
+#define AddrFIO0PIN 0x2009C014
+#define AddrFIO2DIR 0x2009C040
+#define AddrFIO2SET 0x2009C058
+#define AddrFIO2CLR 0x2009C05C
+#define AddrFIO2PIN 0x2009C054
+#define AddrPCONP 0x400FC0C4
+#define AddrPCLKSEL0 0x400FC1A8
+#define AddrPINSEL3 0x4002C00C
+#define AddrT0EMR 0x4000403C
+#define AddrT0MCR 0x40004014
+#define AddrT0MR0 0x40004018
+#define AddrISER0 0xE000E100
+#define AddrT0TCR 0x40004004
+#define AddrT0IR 0x40004000
+#define AddrT0PR 0x4000400C
+#define AddrAD0CR 0x40034000
+#define AddrAD0INTEN 0x4003400C
+#define AddrPINMODE1 0x4002C044
+#define AddrPINSEL1 0x4002C004
+#define AddrAD0DR0 0x40034010
+#define AddrAD0DR1 0x40034014
+#define AddrADSTAT 0x40034030
+unsigned int volatile * const FIO0DIR =( unsigned int *) AddrFIO0DIR ;
+unsigned int volatile * const FIO0SET =( unsigned int *) AddrFIO0SET ;
+unsigned int volatile * const FIO0CLR =( unsigned int *) AddrFIO0CLR ;
+unsigned int volatile * const FIO0PIN =( unsigned int *) AddrFIO0PIN ;
+unsigned int volatile * const FIO2DIR = ( unsigned int *) AddrFIO2DIR ;
+unsigned int volatile * const FIO2SET = ( unsigned int *) AddrFIO2SET ;
+unsigned int volatile * const FIO2CLR = ( unsigned int *) AddrFIO2CLR ;
+unsigned int volatile * const FIO2PIN = ( unsigned int *) AddrFIO2PIN ;
+unsigned int volatile * const PCONP = ( unsigned int *) AddrPCONP ;
+unsigned int volatile * const PCLKSEL0 = ( unsigned int *) AddrPCLKSEL0 ;
+unsigned int volatile * const PINSEL3 = ( unsigned int *) AddrPINSEL3 ;
+unsigned int volatile * const T0EMR = ( unsigned int *) AddrT0EMR ;
+unsigned int volatile * const T0MCR = ( unsigned int *) AddrT0MCR ;
+unsigned int volatile * const T0MR0 = ( unsigned int *) AddrT0MR0 ;
+unsigned int volatile * const ISER0 = ( unsigned int *) AddrISER0 ;
+unsigned int volatile * const T0TCR = ( unsigned int *) AddrT0TCR ;
+unsigned int volatile * const T0IR = ( unsigned int *) AddrT0IR ;
+unsigned int volatile * const AD0CR = ( unsigned int *) AddrAD0CR ;
+unsigned int volatile * const AD0INTEN = ( unsigned int *) AddrAD0INTEN ;
+unsigned int volatile * const PINMODE1 = ( unsigned int *) AddrPINMODE1 ;
+unsigned int volatile * const PINSEL1 = ( unsigned int *) AddrPINSEL1 ;
+unsigned int volatile * const AD0DR0 = ( unsigned int *) AddrAD0DR0 ;
+unsigned int volatile * const AD0DR1 = ( unsigned int *) AddrAD0DR1 ;
+unsigned int volatile * const ADSTAT = ( unsigned int *) AddrADSTAT ;
+unsigned int volatile *const FIO0MASK = (unsigned int*) AddrFIO0MASK;
+unsigned int volatile *const PINMODE0 = (unsigned int*) AddrPINMODE0;
+
+
+unsigned int unid;
+unsigned int dec;
+
+
+unsigned int time;
+/////ANTIREBOTE
+int debounce(int SampleA){
+	//-- Set static variables:
+	static int SampleB=0;
+	static int SampleC=0;
+	static int LastDebounceResult =0;
+
+	//-- Logical Function:
+	LastDebounceResult = (LastDebounceResult &&
+						(SampleA || SampleB || SampleC)) ||
+						(SampleA && SampleB && SampleC);
+	//-- Update Sample
+	SampleC=SampleB;
+	SampleB=SampleA;
+
+	return LastDebounceResult;
+}
+////////////////////////////////////////////////////////
+//salidas
+
+
+
+
+
+int retardo(unsigned int );
+void display ( unsigned int  );
+
+int main(void) {
+
+	//unsigned time_antiRebote= 800;
+	// time  = 36450;
+	 //time =  800623;
+	// time  = 3645000;
+	 time  = 10450;
+	  // time  = 9450;
+
+
+	*FIO0DIR |=( 1<< 22);//SALIDAS VA AL CONTROL DEL CATODO1 COMUN H[24]
+	*FIO0DIR |= (1 << 23);// SALIDA AL CONTROL DEL CATODO2 H[15]
+	*FIO0DIR &= ~(1 << 0);// como entrada al P0[0]
+
+	*PINMODE0 &= ~(0x03 << 0);//CONFIGURACION DEL PULSADOR COMO PULLUP
+
+	*FIO2DIR |= (255 << 0 );//SALIDAS AL DISPLAY P2[0],P2[1] .......P2[7];
+	*FIO0MASK = (0XFFFF & ~(1 << 22) & ~(1 << 0)); //ENMASCARO LOS PIN SIN USAR PARA PODER USAR EL FIOPIN
+     *FIO2SET |= (255 << 0);//
+       unid = 0;
+       dec = 0;
+
+    while(1) {
+    	//*FIO0CLR |= (1 << 22);
+
+
+
+
+
+	    *FIO0CLR |= (1 << 22);//habilito el controldel CATODO1  SE ACTIVA CON CERO ENCIENDO LAS UNIDADES
+	   	*FIO0SET |= (1 << 23);//APAGO EL CATODO 2 APAGO LAS DECENAS
+	   	 display (unid);//llamado a los display
+	   	 retardo(time);
+
+	   	 *FIO0SET |= (1 << 22);//apago  el controldel CATODO1  SE ACTIVA CON CERO APAGO LAS UNIDADES
+	   	 *FIO0CLR |= (1 << 23);//enciendo  EL CATODO 2 enciendo  LAS DECENAS
+	   	  display (dec);//llamado a los display
+	   	  retardo(time);
+
+
+
+		   unid++;
+		 if(unid > 9){
+			 dec++;
+			 unid = 0;
+		 }
+
+		 if (dec > 9){
+			 dec = 0;
+			 unid = 0;
+		 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+    return 0 ;
+
+
+}
+
+int retardo(unsigned int time){
+	unsigned int i;
+	for (i=0; i<time; i++); // lazo de demora
+	return 0;
+}
+
+
+
+
+
+void display ( unsigned int num  ){
+switch ( num ){//ESTA PARA CATODO COMUN
+
+
+case 0 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0x3F ;
+break ;
+case 1 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X06 ;
+break ;
+case 2 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X5B ;
+break ;
+case 3 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X4F ;
+break ;
+case 4 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X66 ;
+break ;
+case 5 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X6D ;
+break ;
+case 6 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X7D ;
+break ;
+case 7 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X07 ;
+break ;
+case 8 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X7F ;
+break ;
+case 9 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X6F ;
+break ;
+}
+}
+
+
+
+
+
+

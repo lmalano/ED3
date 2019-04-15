@@ -1,0 +1,51 @@
+///Multiplexado con 2 Led 7 segmentos
+Main {
+
+int control=0;// variable para multiplexacion
+int tabla[10]={//con los bits que prendo/apago para formar el numero (binario)}
+
+while() {} 
+}
+
+
+Void TIMER0_IRQHandler(Void){
+
+switch(control) {
+case 0: 
+	LPC_GPIO0->FIOCLR|=(1<<8); deshabilito display 1
+	LPC_GPIO0->FIOSET=tabla[contador0];	//cargo unidad para mostrar
+	LPC_GPIO0->FIOSET|=(1<<7); habilito display 0
+	control=1; //para entrar a display 1
+
+case 1:
+	LPC_GPIO0->FIOCLR|=(1<<7); deshabilito display 0
+	LPC_GPIO0->FIOSET=tabla[contador1];	//cargo decena para mostrar
+	LPC_GPIO0->FIOSET|=(1<<8); habilito display 1
+	control=0; //para volver a display 0, si x ej tendriamos centena, control=2 para avanzar al siguiente case
+		}
+//en caso de tener centena (case 2 ), unidad de mil (case 3) hay mas case y control aumenta su valor 
+
+				}
+
+
+Void EINT3_IRQHandler (Void)	/	SysTick_IRQHandler (Void) {
+//en caso de tener una int externa 3 (ya sea x GPIO o EINT3 como pudo ser EINT0) o systick o TIMER1
+
+contador0++;
+if(contador0==10){
+	contador0=0;
+	contador1++;
+		if(contador1==10)
+			{contador1=0;}
+		}
+
+// podemos hacer q incremente o decremente, en caso de int x GPIO preguntamos con el reg  IO(0/2)IntStarR - IO(0/2)IntStatF (de acuerdo
+//si configuramos la interrupcion x rising o falling), q pin del pto 0/2 tocamos y de acuerdo a eso incrementamos o decrementamos la variable
+
+}
+
+
+
+
+
+			}

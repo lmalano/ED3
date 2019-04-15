@@ -1,0 +1,131 @@
+//	SUPER CONTADOR DE 0000 A 9999
+Moderador Local
+PIC24H
+*****
+ 
+Mensajes: 2390
+
+RE: Ejemplitos en C para 16F648A
+« Respuesta #41 en: 24 de Agosto de 2005, 07:40:00 »
+Bueno celebrando mi mensaje numero 100!!!(parece que fue ayer...)aqui un ejemplito massss de contador en display"s de 7seg...ya se que estais cansados de ver numeritos y mas numeritossss jeje pero weno asi ya sabemos programar display"s de 7seg multiplexados, interrupciones y demas cositas...esta vez es un SUPER CONTADOR!!!!!jeje ascendente(de momento) que cuenta de 0000 a 9999 y vuelta a empezar....bueno compañeros, ya no hay excusa que no sabemos contar!!!!:
+
+////////////////////////////////////////////////////////////////////////////////////
+//                     VsZeNeR"05      
+//                     23/Agosto/05
+//
+//   Programa:   Contador del 0000 al 9999
+//   Version:   0.0
+//
+//   Dispositivo: PIC 16F648A         Compilador:    CCS vs3.227
+//   Entorno IDE: MPLAB IDE v7.20      Simulador:    Proteus 6.7sp3
+//
+//   Notas: Contador del 0000 al 9999 cada 1s y vuelta a empezar. Tener en cuenta
+//         que hay que poner la directiva NOLVP para que el pin B4 sea de salida.
+//         Se utiliza variables locales:
+//            * i -> indice tabla 7seg para mostrar digito por 1º 7seg
+//            * j -> indice tabla 7seg para mostrar digito por 2º 7seg
+//            * w -> indice tabla 7seg para mostrar digito por 3º 7seg
+//            * z -> indice tabla 7seg para mostrar digito por 4º 7seg
+//            * flag -> variable que cuenta 1s
+//            * var -> ajuste fino para que desborde cada segundo
+//         Utilizamos la funcion de interrupcion para actualizar indices de la
+//         tabla de 7seg para mostrar el digito correspondiente en el respectivo
+//         7seg, para ello el TMR0 se desborda cada 1s, para ello debe ser cargado
+//         con 61(equivale a un desbordamiento cada 50ms mas o menos), para obtener
+//         un desbordamiento de 1s utilizamos una variable(flag) que no entra en
+//         la actualizacion de indices hasta transcurrido 1s.
+//   Conexiones:
+//         · RA0 -> Display 1º 7seg
+//         · RA1 -> Display 2º 7seg
+//         · RA2 -> Display 3º 7seg
+//         · RA3 -> Display 4º 7seg
+//         · RB0 -> a 7seg
+//         · RB1 -> b 7seg
+//         · RB2 -> c 7seg
+//         · RB3 -> d 7seg
+//         · RB4 -> e 7seg
+//         · RB5 -> f 7seg
+//         · RB6 -> g 7seg
+//////////////////////////////////////////////////////////////////////////////////
+
+#include <16f648a.h>            //pic a utilizar          
+#fuses XT,NOWDT,NOPROTECT,PUT,NOLVP      //ordenes para el programador 
+#use delay (clock=4000000)         //Fosc=4Mhz
+#use standard_io(B)
+#use fixed_io(a_outputs=PIN_A0,PIN_A1,PIN_A2,PIN_A3)   //A0,A1,A2,A3 como salidas en porta 
+
+char i=0,j=0,w=0,z=0,flag=0,var=20;   //variables globales
+
+///LLAMADA FUNCION INTERRUPCION
+#INT_TIMER0
+void interrupcion()
+{
+   if(flag>var){            //¿ya es 1 segundo?
+      var--;               //SI -> decremento var... 
+      if(var<18)
+         var=20;            //...ajuste fino de 1s
+      flag=0;               //reset flag para contar 1s
+      if(i>8){            //¿se ha mostrado por 1º 7seg digito 9?
+         i=0;            //SI -> i=0 (muestra digito 0) (*)
+         j++;            //incremento indice j
+         if(j>9){         //¿se ha mostrado por 2º 7seg digito 9?
+            j=0;          //SI -> j=0 (muestra digito 0)
+            w++;         //incremento indice w
+            if(w>9){      //¿se ha mostrado por 3º 7seg digito 9?
+               w=0;      //SI -> w=0 (muestra digito 0)
+               z++;      //incremento indice z
+               if(z>9)      //¿se ha mostrado por 4º 7seg digito 9?
+                  z=0;   //SI -> z=0 (muestra digito 0)
+               }
+            }
+            }
+      else{         //(*) NO -> incrementa i
+         i++;}
+      }
+   set_timer0(61);      //reset TMR0
+   flag++;            //incremento variable flag
+}
+
+///PROGRAMA
+void main(void)
+{
+   int tab7seg[10]={0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x67};   //7seg hex 0-9
+   
+   set_tris_b(0x00);                     //portb como salida
+   enable_interrupts(INT_TIMER0);            //interrupcion TIMER0 activada
+   setup_counters(RTCC_INTERNAL,RTCC_DIV_256);   //configuracion interrupcion TMR0
+   set_timer0(61);                        //carga TMR0
+   enable_interrupts(GLOBAL);               //activadas interrupciones
+
+   do{                        //bucle...
+      output_high(PIN_A0);      
+      output_high(PIN_A1);
+      output_high(PIN_A2);
+      output_low(PIN_A3);         //activado...
+      output_b(tab7seg[ i ]);      //...1º 7seg
+      delay_ms(10);
+      output_high(PIN_A0);
+      output_high(PIN_A1);      
+      output_low(PIN_A2);         //activado...
+      output_high(PIN_A3);      
+      output_b(tab7seg[ j ]);      //...2º 7seg
+      delay_ms(10);
+      output_high(PIN_A0);
+      output_low(PIN_A1);         //activado...
+      output_high(PIN_A2);      
+      output_high(PIN_A3);      
+      output_b(tab7seg[ w ]);      //...3º 7seg
+      delay_ms(10);
+      output_low(PIN_A0);         //activado...
+      output_high(PIN_A1);
+      output_high(PIN_A2);
+      output_high(PIN_A3);      
+      output_b(tab7seg[ z ]);      //...4º 7seg
+      delay_ms(10);               
+      }while(TRUE);            //...infinito         
+}
+
+Mi mensajee numero 100 ole!!!!!Giño
+ En línea
+· Nos vemos en los bares!!!!!
+· Mi Blog: Aqueronte

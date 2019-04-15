@@ -1,0 +1,131 @@
+//TRANSMISION UART Y FUNCION ITOA
+
+/*
+===============================================================================
+ Name        : ENVIAR_PUNTERO_VALOR.c
+ Author      : $(author)
+ Version     :
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+
+
+/*
+===============================================================================
+ Name        : UART_CONTADOR.c
+ Author      : $(author)
+ Version     :
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+
+#ifdef __USE_CMSIS
+#include "LPC17xx.h"
+#endif
+#include <string.h>
+#include <cr_section_macros.h>
+#include <stdio.h>
+#include <stdlib.h>
+unsigned short int *puntero=0x10004000;
+void uartConfig(void);
+void enviar(char );
+
+int main(void){
+	//======================================
+	//int i =0;
+	//char c[1];
+	//char c[]= "hola mundo \r\n";
+	char c[20];
+
+   //======================================
+
+// unsigned int counter=0;
+	 uint32_t  i;
+ // a=SystemCoreClock;
+//char c[]="hola mundo\r\n";
+//char c[5];//para inicializar
+//int b=43;
+//int b=0b11101;
+// itoa(b, c, 10);
+// itoa(b, c, 2);
+uartConfig();
+
+
+
+
+
+    while(1) {
+   // counter=counter+1;
+   // if(counter >255){
+    	//counter=0;
+  //  }
+ //=========================================================================
+    	  * puntero = 5;
+    	      for(i=0;i<20;i++){
+    	    	 puntero++;//aumenta 20 direcciones donde se gurdan los datos
+    	    	 *puntero=5;//*puntero=*AD0DR SI ES ADC SE CARGA CON LOS VALORES MUESTRADOS
+    	      }
+
+    	      puntero=0x10004000;
+    	      for(i=0;i<20;i++){
+    	          	itoa(*puntero, c, 10);
+    	          	enviar(c[0]);
+    	          	puntero++;//aumenta 20 direcciones donde se gurdan los datos
+    	            }
+
+
+
+
+ //==========================================================================
+
+
+
+
+
+ /*
+   for(i=0;c[i];i++){
+    	 while((LPC_UART2->LSR&(1<<5))==0);
+    	//LPC_UART2->THR|=c[i];
+    	 LPC_UART2->THR|=c[i];
+     }
+
+    	for(i=0;i<0xFFFF;i++);
+ */
+
+    }
+    return 0 ;
+}
+
+
+void uartConfig(void){
+	LPC_SC -> PCONP|=(1<<24); 		//UART 2 power/clock control bit
+	LPC_SC -> PCLKSEL1&=~(3<<16);	//Peripheral clock selection for UART2:CCLK/4
+	LPC_UART2 -> LCR|=3;				//Word length select:8-BIT character length, stop bit select:1stop bit,
+	//LPC_UART2 -> LCR|=(1<<3);
+	//LPC_UART2 -> LCR|=(1<<4);
+	//LPC_UART2 -> LCR&=~(1<<5);
+	//Parity Enable: Even parity
+	LPC_UART2 -> LCR|=(1<<7);			//enable access to divisor latches
+	LPC_UART2 -> DLL=163;				//14; The UARTn Divisor Latch LSB Register, along with the UnDLM
+	LPC_UART2 -> DLM=0;				//register, determines the baud rate of the UARTn
+	LPC_UART2 -> LCR&=~(1<<7); 		//Disable access to Divisor Latches
+	LPC_PINCON -> PINSEL0|=(5<<20);		//Configure P0.10 as Tx and P0.11 as Rx
+	LPC_UART2 -> IER|=5;//Enables the REcieve Data Available interrupt for UARTn
+	LPC_UART2 -> IER|=(1<<2);
+//	LPC_UART2 -> IER=5;
+	//LPC_UART2 -> IER|=(1<<1);//habilita la interrupcion por transmision
+	NVIC_EnableIRQ(UART2_IRQn);		//UART2 Interrupt Enable
+}
+
+
+
+void enviar(char c ){
+
+	 while((LPC_UART2->LSR&(1<<5))==0);
+	    	//LPC_UART2->THR|=c[i];
+	    	 LPC_UART2->THR|=c;
+
+
+}

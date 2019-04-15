@@ -1,0 +1,90 @@
+#ifdef __USE_CMSIS
+#include "LPC17xx.h"
+#endif
+
+#include <cr_section_macros.h>
+
+
+
+// Puntero para habilitar perifericos PCONP
+unsigned int volatile *const PCONP =   (unsigned int*)0x400FC0C4;
+
+// Puntero para habilitar interrupciones ISER0
+unsigned int volatile *const ISER0 =   (unsigned int*)0xE000E100;
+
+//Punteros para Timer0
+unsigned int volatile *const T0IR   =  (unsigned int*)0x40004000;
+unsigned int volatile *const T0TCR  =  (unsigned int*)0x40004004;
+unsigned int volatile *const T0PR   =  (unsigned int*)0x4000400C;
+unsigned int volatile *const T0CCR  =  (unsigned int*)0x40004028;
+unsigned int volatile *const T0CR0  =  (unsigned int*)0x4000402C;
+unsigned int volatile *const T0CR1  =  (unsigned int*)0x40004030;
+
+unsigned int volatile *const PCLKSEL0 = (unsigned int*)0x400FC1A8;
+
+unsigned int volatile *const PINSEL3  = (unsigned int*)0x4002C00C;
+
+int cap1 = 0;
+int cap2 = 0;
+
+int main(void)
+{
+
+        *PINSEL3  |= (0b11<<20); // pin 1.26 como CAP0.0
+        *PINSEL3  |= (0b11<<22); // pin 1.27 como CAP0.1
+
+        *PCONP    |=(1<<1);      // Periferico timer0 habilitado
+	    //*PCLKSEL0 |= (0b11<<2);  // Clock de perifericos asignado al timer0
+	    *T0PR      = 0;          // Preescaler desactivado
+        *T0CCR    |= (1<<1);     // int. de CR0 por flanco descendente
+        *T0CCR    |= (1<<2);     // int. por CR0 habilitada
+        *T0CCR    |= (1<<4);     // int. de CR1 por flanco descendente
+        *T0CCR    |= (1<<5);     // int. por CR1 habilitada
+        *T0CR0     =  0;         // limpio registro de captura
+        *T0CR1     =  0;         // limpio registro de captura
+
+    	*T0TCR    |= (1<<0);     // Iniciar la cuenta
+    	*ISER0    |= (1<<1);     // Interrupciones por timer0 habilitadas
+
+
+	volatile static int i = 0 ;
+
+	while(1)
+	{
+
+	}
+
+    return 0 ;
+}
+
+
+void TIMER0_IRQHandler (void)
+{
+	if (*T0IR &= (1<<4))         // Interrupción por CR0?
+	{
+	   cap1   = *T0CR0;          // Si, guardo la captura
+           *T0IR |= (1<<4);         // y bajo bandera
+	}
+        else                         // no, (por CR1)
+	{
+    	   cap2   = *T0CR1;          // guardo la otra captura
+           *T0IR  |= (1<<5);         // y bajo la otra bandera
+
+	}
+
+        if ( cap1!=0 && cap2!=0 )
+	{
+	 int delta=cap1-cap2;
+
+	 if(delta<0)
+          {
+           delta=delta*(-1);
+          }
+         delta = delta / 25000000;
+         cap1 = 0;
+         cap2 = 0;
+	}
+
+
+}
+

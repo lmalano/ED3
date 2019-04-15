@@ -1,0 +1,271 @@
+/******************** (C) COPYRIGHT 2010 NXPSemiconductors ************
+00002  * @file                dac_wave_generate.c
+00003  * @purpose             This example describes how to use DAC to generate a sine wave,
+00004  *                              triangle wave or escalator wave
+00005  * @version             1.0
+00006  * @date                16. July. 2010
+00007  * @author              NXP MCU SW Application Team
+00008  *---------------------------------------------------------------------
+00009  * Software that is described herein is for illustrative purposes only
+00010  * which provides customers with programming information regarding the
+00011  * products. This software is supplied "AS IS" without any warranties.
+00012  * NXP Semiconductors assumes no responsibility or liability for the
+00013  * use of the software, conveys no license or title under any patent,
+00014  * copyright, or mask work right to the product. NXP Semiconductors
+00015  * reserves the right to make changes in the software without
+00016  * notification. NXP Semiconductors also make no representation or
+00017  * warranty that such application will be suitable for the specified
+00018  * use without further testing or modification.
+00019  **********************************************************************/
+00020 #include "lpc17xx_dac.h"
+00021 #include "lpc17xx_libcfg.h"
+00022 #include "lpc17xx_pinsel.h"
+00023 #include "lpc17xx_gpdma.h"
+00024 #include "debug_frmwrk.h"
+00025 
+00026 /* Example group ----------------------------------------------------------- */
+00032 /************************** PRIVATE MACROS *************************/
+00034 #define DMA_SIZE_SINE           60
+00035 #define NUM_SAMPLE_SINE         60
+00036 #define DMA_SIZE                        64
+00037 #define NUM_SAMPLE                      64
+00038 
+00039 #define SIGNAL_FREQ_IN_HZ       60
+00040 #define PCLK_DAC_IN_MHZ 25 //CCLK divided by 4
+00041 
+00042 #define DAC_GENERATE_SINE               1
+00043 #define DAC_GENERATE_TRIANGLE   2
+00044 #define DAC_GENERATE_ESCALATOR  3
+00045 #define DAC_GENERATE_NONE               0
+00046 
+00047 /************************** PRIVATE VARIABLES *************************/
+00048 uint8_t menu1[] =
+00049 "********************************************************************************\n\r"
+00050 "Hello NXP Semiconductors \n\r"
+00051 " DAC generate signals demo \n\r"
+00052 "\t - MCU: LPC17xx \n\r"
+00053 "\t - Core: ARM Cortex-M3 \n\r"
+00054 "\t - Communicate via: UART0 - 115200 kbps \n\r"
+00055 " Use DAC to generate sine, triangle, escalator wave, frequency adjustable\n\r"
+00056 " Signal samples are transmitted to DAC by DMA memory to peripheral\n\r"
+00057 "********************************************************************************\n\r";
+00058 
+00059 /************************** PRIVATE FUNCTION *************************/
+00060 void print_menu(void);
+00061 
+00062 /*-------------------------PRIVATE FUNCTIONS------------------------------*/
+00063 /*********************************************************************/
+00068 void print_menu(void)
+00069 {
+00070         _DBG(menu1);
+00071 }
+00072 
+00073 /*-------------------------MAIN FUNCTION------------------------------*/
+00074 /*********************************************************************/
+00079 int c_entry(void)
+00080 {
+00081         PINSEL_CFG_Type PinCfg;
+00082         DAC_CONVERTER_CFG_Type DAC_ConverterConfigStruct;
+00083         GPDMA_Channel_CFG_Type GPDMACfg;
+00084         GPDMA_LLI_Type DMA_LLI_Struct;
+00085         uint32_t tmp;
+00086         uint8_t i,option;
+00087         uint32_t sin_0_to_90_16_samples[16]={\
+00088                         0,1045,2079,3090,4067,\
+00089                         5000,5877,6691,7431,8090,\
+00090                         8660,9135,9510,9781,9945,10000\
+00091         };
+00092         uint32_t dac_lut[NUM_SAMPLE];
+00093 
+00094         /*
+00095          * Init DAC pin connect
+00096          * AOUT on P0.26
+00097          */
+00098         PinCfg.Funcnum = 2;
+00099         PinCfg.OpenDrain = 0;
+00100         PinCfg.Pinmode = 0;
+00101         PinCfg.Pinnum = 26;
+00102         PinCfg.Portnum = 0;
+00103         PINSEL_ConfigPin(&PinCfg);
+00104 
+00105         /* Initialize debug via UART0
+00106          *  115200bps
+00107          *  8 data bit
+00108          *  No parity
+00109          *  1 stop bit
+00110          *  No flow control
+00111          */
+00112         debug_frmwrk_init();
+00113 
+00114         // print welcome screen
+00115         print_menu();
+00116 
+00117         while(1)
+00118         {
+00119                 //Select option
+00120                 _DBG("Please choose signal type:\n\r");
+00121                 _DBG("\t1) Sine wave.\n\r");
+00122                 _DBG("\t2) Triangle wave.\n\r");
+00123                 _DBG("\t3) Escalator wave.\n\r");
+00124                 option = DAC_GENERATE_NONE;
+00125                 while(option == DAC_GENERATE_NONE)
+00126                 {
+00127                         switch(_DG)
+00128                         {
+00129                         case '1': option = DAC_GENERATE_SINE; break;
+00130                         case '2': option = DAC_GENERATE_TRIANGLE; break;
+00131                         case '3': option = DAC_GENERATE_ESCALATOR; break;
+00132                         default:
+00133                                 _DBG("Wrong choice! Please select 1 or 2 or 3 only!\n\r");
+00134                                 option = DAC_GENERATE_NONE;
+00135                                 break;
+00136                         }
+00137                 }
+00138 
+00139                 //Prepare DAC look up table
+00140                 switch(option)
+00141                 {
+00142                 case DAC_GENERATE_SINE:
+00143                         for(i=0;i<NUM_SAMPLE_SINE;i++)
+00144                         {
+00145                                 if(i<=15)
+00146                                 {
+00147                                         dac_lut[i] = 512 + 512*sin_0_to_90_16_samples[i]/10000;
+00148                                         if(i==15) dac_lut[i]= 1023;
+00149                                 }
+00150                                 else if(i<=30)
+00151                                 {
+00152                                         dac_lut[i] = 512 + 512*sin_0_to_90_16_samples[30-i]/10000;
+00153                                 }
+00154                                 else if(i<=45)
+00155                                 {
+00156                                         dac_lut[i] = 512 - 512*sin_0_to_90_16_samples[i-30]/10000;
+00157                                 }
+00158                                 else
+00159                                 {
+00160                                         dac_lut[i] = 512 - 512*sin_0_to_90_16_samples[60-i]/10000;
+00161                                 }
+00162                                 dac_lut[i] = (dac_lut[i]<<6);
+00163                         }
+00164                         break;
+00165                 case DAC_GENERATE_TRIANGLE:
+00166                         for(i=0;i<NUM_SAMPLE;i++)
+00167                         {
+00168                                 if(i<32) dac_lut[i]= 32*i;
+00169                                 else if (i==32) dac_lut[i]= 1023;
+00170                                 else dac_lut[i] = 32*(NUM_SAMPLE-i);
+00171                                 dac_lut[i] = (dac_lut[i]<<6);
+00172                         }
+00173                         break;
+00174                 case DAC_GENERATE_ESCALATOR:
+00175                         for(i=0;i<NUM_SAMPLE;i++)
+00176                         {
+00177                                 dac_lut[i] = (1023/3)*(i/16);
+00178                                 dac_lut[i] = (dac_lut[i]<<6);
+00179                         }
+00180                         break;
+00181                 default: break;
+00182                 }
+00183 
+00184                 //Prepare DMA link list item structure
+00185                 DMA_LLI_Struct.SrcAddr= (uint32_t)dac_lut;
+00186                 DMA_LLI_Struct.DstAddr= (uint32_t)&(LPC_DAC->DACR);
+00187                 DMA_LLI_Struct.NextLLI= (uint32_t)&DMA_LLI_Struct;
+00188                 DMA_LLI_Struct.Control= ((option==DAC_GENERATE_SINE)?DMA_SIZE_SINE:DMA_SIZE)
+00189                                                                 | (2<<18) //source width 32 bit
+00190                                                                 | (2<<21) //dest. width 32 bit
+00191                                                                 | (1<<26) //source increment
+00192                                                                 ;
+00193 
+00194 
+00195                 /* GPDMA block section -------------------------------------------- */
+00196                 /* Initialize GPDMA controller */
+00197                 GPDMA_Init();
+00198 
+00199                 // Setup GPDMA channel --------------------------------
+00200                 // channel 0
+00201                 GPDMACfg.ChannelNum = 0;
+00202                 // Source memory
+00203                 GPDMACfg.SrcMemAddr = (uint32_t)(dac_lut);
+00204                 // Destination memory - unused
+00205                 GPDMACfg.DstMemAddr = 0;
+00206                 // Transfer size
+00207                 GPDMACfg.TransferSize = ((option==DAC_GENERATE_SINE)?DMA_SIZE_SINE:DMA_SIZE);
+00208                 // Transfer width - unused
+00209                 GPDMACfg.TransferWidth = 0;
+00210                 // Transfer type
+00211                 GPDMACfg.TransferType = GPDMA_TRANSFERTYPE_M2P;
+00212                 // Source connection - unused
+00213                 GPDMACfg.SrcConn = 0;
+00214                 // Destination connection
+00215                 GPDMACfg.DstConn = GPDMA_CONN_DAC;
+00216                 // Linker List Item - unused
+00217                 GPDMACfg.DMALLI = (uint32_t)&DMA_LLI_Struct;
+00218                 // Setup channel with given parameter
+00219                 GPDMA_Setup(&GPDMACfg);
+00220 
+00221                 DAC_ConverterConfigStruct.CNT_ENA =SET;
+00222                 DAC_ConverterConfigStruct.DMA_ENA = SET;
+00223                 DAC_Init(LPC_DAC);
+00224                 /* set time out for DAC*/
+00225                 tmp = (PCLK_DAC_IN_MHZ*1000000)/(SIGNAL_FREQ_IN_HZ*((option==DAC_GENERATE_SINE)?NUM_SAMPLE_SINE:NUM_SAMPLE));
+00226                 DAC_SetDMATimeOut(LPC_DAC,tmp);
+00227                 DAC_ConfigDAConverterControl(LPC_DAC, &DAC_ConverterConfigStruct);
+00228 
+00229                 //Start the demo
+00230                 switch(option)
+00231                 {
+00232                 case DAC_GENERATE_SINE:
+00233                         _DBG("\n\rDAC is generating 60Hz sine wave...");
+00234                         break;
+00235                 case DAC_GENERATE_TRIANGLE:
+00236                         _DBG("\n\rDAC is generating 60Hz triangle wave...");
+00237                         break;
+00238                 case DAC_GENERATE_ESCALATOR:
+00239                         _DBG("\n\rDAC is generating 60Hz escalator wave...");
+00240                         break;
+00241                 default: break;
+00242                 }
+00243 
+00244                 // Enable GPDMA channel 0
+00245                 GPDMA_ChannelCmd(0, ENABLE);
+00246 
+00247                 _DBG_("\n\rPreass ESC if you want to terminate!");
+00248                 while(_DG!=27);
+00249 
+00250                 // Disable GPDMA channel 0
+00251                 GPDMA_ChannelCmd(0, DISABLE);
+00252 
+00253         }
+00254         return 1;
+00255 }
+00256 /* With ARM and GHS toolsets, the entry point is main() - this will
+00257    allow the linker to generate wrapper code to setup stacks, allocate
+00258    heap area, and initialize and copy code and data segments. For GNU
+00259    toolsets, the entry point is through __start() in the crt0_gnu.asm
+00260    file, and that startup code will setup stacks and data */
+00261 int main(void)
+00262 {
+00263     return c_entry();
+00264 }
+00265 
+00266 #ifdef  DEBUG
+00267 /*******************************************************************************
+00268 * @brief                Reports the name of the source file and the source line number
+00269 *                               where the CHECK_PARAM error has occurred.
+00270 * @param[in]    file Pointer to the source file name
+00271 * @param[in]    line assert_param error line source number
+00272 * @return               None
+00273 *******************************************************************************/
+00274 void check_failed(uint8_t *file, uint32_t line)
+00275 {
+00276         /* User can add his own implementation to report the file name and line number,
+00277          ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+00278 
+00279         /* Infinite loop */
+00280         while(1);
+00281 }
+00282 #endif
+00283 /*
+00284  * @}
+00285  */

@@ -1,0 +1,539 @@
+#define AddrT0CCR  0x40004028
+
+#define AddrFIO1DIR  0x2009C020
+#define AddrFIO0DIR 0X2009C000
+#define AddrFIO0SET 0X2009C018
+#define AddrFIO0CLR 0X2009C01C
+#define AddrFIO0PIN 0X2009C014
+#define AddrPINMODE0 0X2009C040
+
+
+#define AddrPINSEL0 0X4002C000
+#define AddrIO0IntEnR 0X40028090 //registros asociados a las
+#define AddrIO0IntEnF 0X40028094 // interrupciones por GPIO
+#define AddrIO0IntStatR 0X40028084
+#define AddrIO0IntStatF 0X40028088
+#define AddrIO0IntClr 0X4002808C
+
+#define AddrPCONP 0X400FC0C4
+#define AddrPCLKSEL0 0X400FC1A8
+#define AddrPINSEL3 0X4002C00C
+#define AddrT1EMR 0X4000803C
+#define AddrT1MCR 0X40008014
+#define AddrT1MR0 0X40008018
+#define AddrISER0 0XE000E100
+#define AddrT1TCR 0X40008004
+#define AddrT1IR 0X40008000
+#define AddrT1PR 0X4000800C
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////Name        : TIMER_INTERRUPCION.c
+ Author      : $(author)
+ Version     :
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+
+//#define AddrFIO0DIR 0x2009C000
+#define AddrPINMODE0 0X2009C040
+#define AddrFIO0MASK 0X2009C010
+//#define AddrFIO0SET 0x2009C018
+//#define AddrFIO0CLR 0x2009C01C
+//#define AddrFIO0PIN 0x2009C014
+#define AddrFIO2DIR 0x2009C040
+#define AddrFIO2SET 0x2009C058
+#define AddrFIO2CLR 0x2009C05C
+#define AddrFIO2PIN 0x2009C054
+//#define AddrPCONP 0x400FC0C4
+//#define AddrPCLKSEL0 0x400FC1A8
+//#define AddrPINSEL3 0x4002C00C
+#define AddrT0EMR 0x4000403C
+#define AddrT0MCR 0x40004014
+#define AddrT0MR0 0x40004018
+//#define AddrISER0 0xE000E100
+#define AddrT0TCR 0x40004004
+#define AddrT0IR 0x40004000
+#define AddrT0PR 0x4000400C
+#define AddrAD0CR 0x40034000
+#define AddrAD0INTEN 0x4003400C
+#define AddrPINMODE1 0x4002C044
+#define AddrPINSEL1 0x4002C004
+#define AddrAD0DR0 0x40034010
+#define AddrAD0DR1 0x40034014
+#define AddrADSTAT 0x40034030//T0CR0 - 0x4000 402C
+#define AddrT0CR0  0x4000402C
+
+//
+unsigned int volatile * const T0CR0 =( unsigned int *) AddrT0CR0 ;
+unsigned int volatile * const FIO1DIR =( unsigned int *) AddrFIO1DIR ;
+unsigned int volatile *const FIO0DIR =(unsigned int*)AddrFIO0DIR;
+unsigned int volatile *const FIO0SET =(unsigned int*)AddrFIO0SET;
+unsigned int volatile *const FIO0CLR =(unsigned int*)AddrFIO0CLR;
+unsigned int volatile *const FIO0PIN =(unsigned int*)AddrFIO0PIN;
+
+unsigned int volatile *const PINSEL0= (unsigned int*) AddrPINSEL0;
+unsigned int volatile *const IO0IntEnR=(unsigned int*) AddrIO0IntEnR;
+unsigned int volatile *const IO0IntEnF= (unsigned int*) AddrIO0IntEnF;
+unsigned int volatile *const IO0IntStatR= (unsigned int*) AddrIO0IntStatR;
+unsigned int volatile *const IO0IntStatF= (unsigned int*) AddrIO0IntStatF;
+unsigned int volatile *const IO0IntClr= (unsigned int*) AddrIO0IntClr;
+
+
+
+//
+//unsigned int volatile * const FIO0DIR =( unsigned int *) AddrFIO0DIR ;
+//unsigned int volatile * const FIO0SET =( unsigned int *) AddrFIO0SET ;
+//unsigned int volatile * const FIO0CLR =( unsigned int *) AddrFIO0CLR ;
+//unsigned int volatile * const FIO0PIN =( unsigned int *) AddrFIO0PIN ;
+unsigned int volatile * const FIO2DIR = ( unsigned int *) AddrFIO2DIR ;
+unsigned int volatile * const FIO2SET = ( unsigned int *) AddrFIO2SET ;
+unsigned int volatile * const FIO2CLR = ( unsigned int *) AddrFIO2CLR ;
+unsigned int volatile * const FIO2PIN = ( unsigned int *) AddrFIO2PIN ;
+unsigned int volatile * const PCONP = ( unsigned int *) AddrPCONP ;
+unsigned int volatile * const PCLKSEL0 = ( unsigned int *) AddrPCLKSEL0 ;
+unsigned int volatile * const PINSEL3 = ( unsigned int *) AddrPINSEL3 ;
+unsigned int volatile * const T0EMR = ( unsigned int *) AddrT0EMR ;
+unsigned int volatile * const T0MCR = ( unsigned int *) AddrT0MCR ;
+unsigned int volatile * const T0MR0 = ( unsigned int *) AddrT0MR0 ;
+unsigned int volatile * const ISER0 = ( unsigned int *) AddrISER0 ;
+unsigned int volatile * const T0TCR = ( unsigned int *) AddrT0TCR ;
+unsigned int volatile * const T0IR = ( unsigned int *) AddrT0IR ;
+unsigned int volatile * const AD0CR = ( unsigned int *) AddrAD0CR ;
+unsigned int volatile * const AD0INTEN = ( unsigned int *) AddrAD0INTEN ;
+unsigned int volatile * const PINMODE1 = ( unsigned int *) AddrPINMODE1 ;
+unsigned int volatile * const PINSEL1 = ( unsigned int *) AddrPINSEL1 ;
+unsigned int volatile * const AD0DR0 = ( unsigned int *) AddrAD0DR0 ;
+unsigned int volatile * const AD0DR1 = ( unsigned int *) AddrAD0DR1 ;
+unsigned int volatile * const ADSTAT = ( unsigned int *) AddrADSTAT ;
+unsigned int volatile *const FIO0MASK = (unsigned int*) AddrFIO0MASK;
+unsigned int volatile *const PINMODE0 = (unsigned int*) AddrPINMODE0;
+unsigned int volatile *const T0CCR = (unsigned int*)AddrT0CCR;
+/////////////////////////////////////////////////////////////////
+
+//unsigned int volatile *const PCONP=(unsigned int*)AddrPCONP;
+//unsigned int volatile *const PCLKSEL0=(unsigned int*)AddrPCLKSEL0;
+//unsigned int volatile *const PINSEL3=(unsigned int*)AddrPINSEL3;
+unsigned int volatile *const T1EMR=(unsigned int*)AddrT1EMR;
+unsigned int volatile *const T1MCR=(unsigned int*)AddrT1MCR;
+unsigned int volatile *const T1MR0=(unsigned int*)AddrT1MR0;
+//unsigned int volatile *const ISER0=(unsigned int*)AddrISER0;
+unsigned int volatile *const T1TCR=(unsigned int*)AddrT1TCR;
+unsigned int volatile *const T1IR=(unsigned int*)AddrT1IR;
+unsigned int volatile *const T1PR=(unsigned int*)AddrT1PR;
+//unsigned int volatile *const PINMODE0 = (unsigned int*) AddrPINMODE0;
+
+
+/////////////////////////////////////////////////////
+
+
+unsigned int unid;
+unsigned int dec;
+
+
+unsigned int time;
+/////ANTIREBOTE
+int debounce(int SampleA){
+	//-- Set static variables:
+	static int SampleB=0;
+	static int SampleC=0;
+	static int LastDebounceResult =0;
+
+	//-- Logical Function:
+	LastDebounceResult = (LastDebounceResult &&
+						(SampleA || SampleB || SampleC)) ||
+						(SampleA && SampleB && SampleC);
+	//-- Update Sample
+	SampleC=SampleB;
+	SampleB=SampleA;
+
+	return LastDebounceResult;
+}
+////////////////////////////////////////////////////////
+//salidas
+
+
+
+
+void Timer0Config(void);
+int retardo(unsigned int );
+void display ( unsigned int  );
+///////////////////////////////
+void TIMER1_IRQHandler(void);
+void EINT3_IRQHandler(void);
+
+
+///////////////////////////////
+
+int main(void) {
+
+	//unsigned time_antiRebote= 800;
+	// time  = 36450;
+	 //time =  800623;
+	// time  = 3645000;
+
+	  // time  = 9450;
+	 ////////////////////////////////////////////////////////
+//DECLARACIONES DEL TIMER
+	*PINSEL0 &=~(3<<30);
+		*FIO0DIR &=~(3<<15);//HABILITO LAS ENTRADAS P0[15] Y P0[16] DE LOS PULSADORES
+		*FIO1DIR |= (1 << 22);//MATCH DE SALIDA
+		*FIO1DIR |= (1 << 25);//HABILITO LOS MATCH COMO SALIDAS
+		*FIO1DIR &= ~ (1 << 18 );// CAPTURAS COMO ENTRADAS
+		*FIO1DIR &= ~ (1 << 19 );
+		*FIO1DIR &= ~ (1 << 26 );//    CAP0.0 ENTRADA                   //P1.26==PAD[9]
+
+
+
+
+
+		//*PINMODE0 &= ~(0x03<<15);OBSERVACION PARA LA INTERRUPCIONES POR FLANCO NO SE ACTIVA LOS PULLUP
+		//*PINMODE0 &= ~(0x03<<16);
+
+		*IO0IntEnF|=(1<<15); //enable falling edge interrupt for P.0.15//HABILITA INTERRUPCION EXTERNA FLANCO DE BAJADA
+		*IO0IntEnF|=(1<<16); //enable falling edge interrupt for P.0.16
+
+
+		*PCONP |= (1<<2);		//enciendo el periferico del timer
+		*PCLKSEL0 |= (1<<4);	//peripheral clock: system clock
+		*PINSEL3 |= (3 <<12);	//pins: MATCH1.0   13:12 P1.22==PAD[4]GPIO Port 1.22 MCOB0 USB_PWRD MAT1.0 00 FUMCION 11 MATCH 0
+		//13:12 P1.22 GPIO Port 1.22    MCOB0(FUNCION 01)      USB_PWRD(FUNCION 10)         MAT1.(FUNCION 11)     0 00
+		*PINSEL3 |= (3 <<18);//MODO MATCH1.1 P1[25] ==PAD[5]
+		*PINSEL3 |= (3 << 4);//MODO CAP1.0//25:24 P1.18 GPIO Port 1.28  MCOA2FUNCION[01]    PCAP1.0[10]     MAT0.0 00[11]
+	     //P1[18]==PAD[1]
+		*PINSEL3 |= (3 << 6);//MODO CAP1.1[11] P1[19] == PAD[2]
+		*T1EMR|=(3<<4);//5: 4 EMC0 External Match Control 0. Determina la funcionalidad de la Coincidencia Externa 0. La Tabla 433 muestra el
+		//codificación de estos bits.
+		*T1MCR|=3;			//reset on MR0 the TC will be reset if MR0 matches it. interrup on MR0: an interrup is
+							//generated when MR0 matches the value in the TC
+		//Match Control Register. El MCR se usa para controlar si una interrupción es
+		//generado y si el TC se restablece cuando ocurre una coincidencia.
+		//EL T1MCR ES EL QUE CONTROLA LAS INTERRUPCIONES COMO CONSECUENCIA DE LAS COINCIDENCIAS O MATCHS
+		//00 Do Nothing
+		//DE REFIERE AL TEMR TODO ABAJO TABLA 433
+		//01 Borre el bit / salida de coincidencia externa correspondiente a 0 (el pin de MATn.m es BAJO si está anclado).
+		//10 Establezca el bit / salida de coincidencia externa correspondiente en 1 (el pin de MATn.m es ALTO si está anclado).
+		//11 Alterne el bit / salida de coincidencia externa correspondiente.
+
+		//*T1MR0=364500;
+		*T1MR0=5000;//PARA MULTIPLEXADO DE 20MS CON FRECUENCIA DEL TIMER DE 1MHZ
+		//match register 0
+		//Match Register 0. MR0 se puede habilitar a través del MCR para restablecer
+		//el TC, detiene tanto el TC como la PC, y / o genera una interrupción cada vez que MR0 coincide con el TC.
+		*ISER0|=(1<<2);/// Interrumpir Registros Habilitar Conjunto. Estos 2 registros permiten habilitarVER TABLA 52
+		//INTERRUPCION PARA TIMER1 1<< 2//interrumpciones y vuelve a leer la interrupción habilita funciones periféricas específicas
+		/*
+		El registro ISER0 permite habilitar las primeras 32 interrupciones periféricas o leer el
+		estado habilitado de esas interrupciones. Las interrupciones restantes están habilitadas a través del ISER1
+		registrarse (Sección 6.5.2). La desactivación de las interrupciones se realiza a través de ICER0 e ICER1
+		registros (Sección 6.5.3 y Sección 6.5.4).
+		*/
+		*ISER0|=(1<<21); //external interrupt 3 interrupt enable, VER TABLA 52INTERRUPCONES EXTERNAS HABILITADAS
+
+
+		*T1TCR|=1;			//habilito el registro del control del timer
+		//Registro de control de temporizador TCR. El TCR se usa para controlar el temporizador
+		//Funciones de contador. El contador del temporizador se puede desactivar o restablecer a través del TCR.
+
+
+
+
+
+
+		//*FIO0DIR|=(1<<22);
+
+////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+	*FIO0DIR |=( 1<< 22);//SALIDAS VA AL CONTROL DEL CATODO1 COMUN H[24]
+	*FIO0DIR |= (1 << 23);// SALIDA AL CONTROL DEL CATODO2 H[15]
+	*FIO0DIR &= ~(1 << 0);// como entrada al P0[0]
+
+	*FIO0DIR |=( 1<< 8);//P0[8]===H[6]
+
+	*PINMODE0 &= ~(0x03 << 0);//CONFIGURACION DEL PULSADOR COMO PULLUP
+	*PINMODE1 &= ~(0x03 << 26);
+
+	*FIO2DIR |= (255 << 0 );//SALIDAS AL DISPLAY P2[0],P2[1] .......P2[7];
+	*FIO0MASK = (0XFFFF & ~(1 << 22) & ~(1 << 0)); //ENMASCARO LOS PIN SIN USAR PARA PODER USAR EL FIOPIN
+     *FIO2SET |= (255 << 0);//
+       unid = 0;
+       dec = 0;
+       time  = 10450;
+    while(1) {
+    	//*FIO0CLR |= (1 << 22);
+
+
+
+
+
+
+
+    }
+    return 0 ;
+
+
+}
+///////////////////////////////////////
+void TIMER1_IRQHandler(void){
+
+	static int i=0;
+		if(i==0){
+
+
+				   	*FIO0SET |= (1 << 23);//APAGO EL CATODO 2 APAGO LAS DECENAS
+				   	*FIO0CLR |= (1 << 22);//habilito el controldel CATODO1  SE ACTIVA CON CERO ENCIENDO LAS UNIDADES
+				   	 display (unid);//llamado a los display
+				   	 retardo(time);
+
+				   	 *FIO0SET |= (1 << 22);//apago  el controldel CATODO1  SE ACTIVA CON CERO APAGO LAS UNIDADES
+				   	 *FIO0CLR |= (1 << 23);//enciendo  EL CATODO 2 enciendo  LAS DECENAS
+				   	  display (dec);//llamado a los display
+				   	  retardo(time);
+
+
+
+			i=1;
+		}
+		else if(i==1){
+
+
+						   	*FIO0SET |= (1 << 23);//APAGO EL CATODO 2 APAGO LAS DECENAS
+						    *FIO0CLR |= (1 << 22);//habilito el controldel CATODO1  SE ACTIVA CON CERO ENCIENDO LAS UNIDADES
+						   	 display (unid);//llamado a los display
+						   	 retardo(time);
+
+						   	 *FIO0SET |= (1 << 22);//apago  el controldel CATODO1  SE ACTIVA CON CERO APAGO LAS UNIDADES
+						   	 *FIO0CLR |= (1 << 23);//enciendo  EL CATODO 2 enciendo  LAS DECENAS
+						   	  display (dec);//llamado a los display
+						   	 retardo(time);
+						   	  unid++;
+						   			 if(unid > 9){
+						   				 dec++;
+						   				 unid = 0;
+						   			 }
+
+						   			 if (dec > 9){
+						   				 dec = 0;
+						   				 unid = 0;
+						   			 }
+
+
+
+
+			i=0;
+		}
+		*T1IR|=1;				//MR0 interrupt flag for match channel 0
+	}
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+void TIMER0_IRQHandler(void){
+
+		dec = *T0CR0-1750;
+		unid = dec * 10.0 ;
+		unid = unid % 10 ;
+
+		*FIO0SET |= (1 << 8);
+		//calcula la distancia del objeto
+		              //CR0 Capture Register 0. CR0 se carga con el valor de TC cuando hay
+                           //es un evento en la entrada CAPn.0 (CAP0.0 o CAP1.0 respectivamente)
+		           /*T1CR0
+		            Cada registro de captura está asociado con un pin de dispositivo y puede cargarse con el temporizador
+                     Valor del contador cuando ocurre un evento específico en ese pin. La configuración en la captura
+                                    El registro de registro de control determina si la función de captura está habilitada, y si
+                                 un evento de captura ocurre en el borde ascendente del pin asociado, el borde descendente, o en
+                               ambos bordes
+        */
+ // * FIO0CLR |= ( 1 << 23 );
+//		//display ( dec );
+		//* FIO0SET |= ( 1 << 1 );
+		//a = 1 ;
+
+
+
+		/////////////////////////////////////
+
+
+
+
+		////////////////////////////////////////////////
+
+
+	//	a=0;
+	//}
+	//else if( a == 1 ) {
+		//* FIO0CLR |= ( 1 << 22 );
+			//	display ( unid );
+				//* FIO0SET |= ( 1 << 23 );
+				//a = 0 ;
+
+
+
+			//reinicia el TMR1//Registro de control de temporizador TCR. El TCR se usa para controlar el temporizador
+//Funciones de contador. El contador del temporizador se puede desactivar o restablecer
+//a través del TCR////1 Reinicio del contador Cuando uno, el contador del temporizador y el contador de preescala se reinician sincrónicamente en el
+//el próximo borde positivo de PCLK. Los contadores permanecen restablecidos hasta que TCR [1] se devuelve a cero
+		//a=1;
+
+
+
+		*T0TCR&=~(1<<1);//0 Contador habilitado Cuando uno, el contador de temporizador y el contador de preescala están habilitados para el conteo. Cuando cero
+		//Los contadores están desactivados.0
+
+
+
+
+	//* T0IR |= 1 ;
+		*T0IR=(1<<4);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////
+void EINT3_IRQHandler(void){
+
+	if((*IO0IntStatF>>15)&1){//  EJECUTA LA INTERRUPCION  EN EL PIN 15 == H[13]
+		//dec = *T0CR0-1750;
+		dec = *T0CR0-1800;
+		//unid = *T0CR0;
+				unid = dec*10.0 ;
+
+				unid = unid % 10 ;
+
+				while(!(*FIO0PIN & (1<<15)));
+				*FIO0SET |= (1 << 8);
+
+				*T0TCR&=~(1<<1);//0 Contador habilitado Cuando uno, el contador de temporizador y el contador de preescala están habilitados para el conteo. Cuando cero
+						//Los contadores están desactivados.0
+
+
+
+
+					//* T0IR |= 1 ;
+						*T0IR=(1<<4);
+
+
+		}
+	if((*IO0IntStatF>>16)&1){ //status of rising edge interrupt for P.0.15,PARA EL PIN 16==H[14]
+
+	}
+	*IO0IntClr|=(1<<15);
+	*IO0IntClr|=(1<<16);
+}
+//PC PRESCALER COUNTER Contador de presa La PC de 32 bits es un contador que se incrementa
+//al valor almacenado en PR. Cuando se alcanza el valor en PR, el TC
+//se incrementa y la PC se borra. La PC es observable y controlable a través de la interfaz de bus
+
+
+
+
+
+/////////////////////////////////////////////
+
+int retardo(unsigned int time){
+	unsigned int i;
+	for (i=0; i<time; i++); // lazo de demora
+	return 0;
+}
+
+
+
+
+
+void display ( unsigned int num  ){
+switch ( num ){//ESTA PARA CATODO COMUN
+
+
+case 0 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0x3F ;
+break ;
+case 1 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X06 ;
+break ;
+case 2 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X5B ;
+break ;
+case 3 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X4F ;
+break ;
+case 4 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X66 ;
+break ;
+case 5 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X6D ;
+break ;
+case 6 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X7D ;
+break ;
+case 7 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X07 ;
+break ;
+case 8 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X7F ;
+break ;
+case 9 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X6F ;
+break ;
+}
+}
+
+
+void Timer0Config(void){
+	*PCLKSEL0|=(1<<4);			//enciende TMR1 ELIGE FRECUENCIA DEL CCLK 4MHZ
+	*PINSEL3|=(3<<20);			//habilita CAP1.0// 21:20  P1.26==PAD[9]   GPIO Port 1.26 MCOB1 PWM1.6  FUNCION[11] CAP0.0 00
+	*T0CCR |= 7;
+}
+
+
+	//CAP1.0 interrumpe por ambos flancos ES COMO OB111 << 0 ES DECIR HABILITO EL BIT 0 1 Y 2 DE T1CCR
+	/////*
+	 //* //CAP1.0 interrumpe por ambos flancos ES COMO OB111 << 0 ES DECIR HABILITO EL BIT 0 1 Y 2 DE T1CCR
+	                           //ES SU PAR DE MATCH CONTROL REGISTER MCR DONDE DE HABILIATA LA INTERUPCION POR COINCIDENCIA
+
+	 //* Registro de control de captura. El CCR controla qué bordes de la
+       //entradas de captura se utilizan para cargar los registros de captura y si
+        //o no se genera una interrupción cuando tiene lugar una captura.
+	      //                     //ES SU PAR DE MATCH CONTROL REGISTER MCR DONDE DE HABILIATA LA INTERUPCION POR COINCIDENCIA
+	////////////////////////////////////////////////////////////////
+	//../ Mostrador/
+//Minutero
+//Modo
+//Este campo selecciona qué bordes PCLK crecientes pueden incrementar el contador de escala previa del temporizador
+//(PC), o borre la PC e incremente el contador del temporizador (TC).
+//00
+//00 Modo de temporizador: el TC se incrementa cuando el contador de escala previa coincide con la escala previa
+//Registro. El contador de preescala se incrementa en cada flanco PCLK ascendente.
+//01 Modo de contador: TC se incrementa en flancos ascendentes en la entrada CAP seleccionada por bits 3: 2.
+//10 Modo de contador: TC se incrementa en los bordes descendentes en la entrada CAP seleccionada por los bits 3: 2.
+//11 Modo de contador: TC se incrementa en ambos bordes en la entrada CAP seleccionada por los bits 3:
+
+
+
+
+
+
+
+
+
+
+
+

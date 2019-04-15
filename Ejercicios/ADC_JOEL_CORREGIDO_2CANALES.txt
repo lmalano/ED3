@@ -1,0 +1,358 @@
+﻿//
+
+/*
+===============================================================================
+ Name        : adc_Correccion_joel.c
+ Author      : $(author)
+ Version     :
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+
+#ifndef CLASE7_EJERCICIO15_H_
+#define CLASE7_EJERCICIO15_H_
+
+//-- To Led-P0[22] as Output
+#define AddrFIO0DIR 	0x2009C000
+#define AddrFIO0SET 	0x2009C018
+#define AddrFIO0CLR 	0x2009C01C
+
+//-- TO ADC P0[26]
+#define AddrPCONP 		0x400FC0C4
+#define AddrAD0CR 		0x40034000
+#define AddrPINMODE1 	0x4002C044
+#define AddrPINSEL1 	0X4002C004
+#define AddrAD0INTEN	0x4003400C
+#define AddrAD0DR0 		0x40034010
+#define AddrPCLKSEL0 	0X400FC1A8
+#define AddrAD0GDR 		0x40034004
+#define AddrAD0STAT     0x40034030
+
+#define AddrAD0DR1 		0x40034014
+
+//-- To Timer1
+//#define AddrPCONP 		0X400FC0C4
+//#define AddrPCLKSEL0 	0X400FC1A8
+//#define AddrPINSEL3 	0X4002C00C
+//#define AddrPINMODE3 	0X4002C04C
+#define AddrT1EMR 		0X4000803C
+#define AddrT1MCR 		0X40008014
+#define AddrT1MR0 		0X40008018
+#define AddrISER0 		0XE000E100
+#define AddrT1TCR 		0X40008004
+#define AddrT1IR 		0X40008000
+#define AddrT1PR 		0X4000800C
+
+//-- Port2
+#define AddrFIO2DIR	 0x2009C040
+#define AddrFIO2MASK 0X2009C050
+#define AddrFIO2PIN  0X2009C054
+#define AddrFIO2SET  0X2009C058
+#define AddrFIO2CLR  0X2009C05C
+
+/*
+ * All Interrupts
+ * */
+#define AddrISER0 		0XE000E100
+
+// LED22
+unsigned int volatile *const FIO0DIR 	= (unsigned int*) AddrFIO0DIR;
+unsigned int volatile *const FIO0SET 	= (unsigned int*) AddrFIO0SET;
+unsigned int volatile *const FIO0CLR 	= (unsigned int*) AddrFIO0CLR;
+
+// ADC
+unsigned int volatile *const PCONP 	 	= (unsigned int*) AddrPCONP;
+unsigned int volatile *const AD0CR   	= (unsigned int*) AddrAD0CR;
+unsigned int volatile *const AD0INTEN 	= (unsigned int*) AddrAD0INTEN;
+unsigned int volatile *const PINMODE1 	= (unsigned int*) AddrPINMODE1;
+unsigned int volatile *const PINSEL1    = (unsigned int*) AddrPINSEL1;
+unsigned int volatile *const AD0DR0 	= (unsigned int*) AddrAD0DR0;
+unsigned int volatile *const PCLKSEL0 	= (unsigned int*) AddrPCLKSEL0;
+unsigned int volatile *const AD0GDR 	= (unsigned int*) AddrAD0GDR;
+unsigned int volatile *const AD0STAT    = (unsigned int*) AddrAD0STAT ;
+unsigned int volatile *const AD0DR1 	= (unsigned int*) AddrAD0DR1;
+
+// TIMER0
+//unsigned int volatile *const PCONP       = (unsigned int*) AddrPCONP;
+//unsigned int volatile *const PCLKSEL0    = (unsigned int*) AddrPCLKSEL0;
+//unsigned int volatile *const PINSEL3     = (unsigned int*) AddrPINSEL3;
+//unsigned int volatile *const PINMODE3    = (unsigned int*) AddrPINMODE3;
+unsigned int volatile *const T1EMR       = (unsigned int*) AddrT1EMR;
+unsigned int volatile *const T1MCR       = (unsigned int*) AddrT1MCR;
+unsigned int volatile *const T1MR0       = (unsigned int*) AddrT1MR0;
+unsigned int volatile *const T1TCR       = (unsigned int*) AddrT1TCR;
+unsigned int volatile *const T1IR        = (unsigned int*) AddrT1IR;
+unsigned int volatile *const T1PR        = (unsigned int*) AddrT1PR;
+
+// PORT-2
+unsigned int volatile *const FIO2DIR 		= (unsigned int*) AddrFIO2DIR;
+unsigned int volatile *const FIO2MASK		= (unsigned int*) AddrFIO2MASK;
+unsigned int volatile *const FIO2PIN 		= (unsigned int*) AddrFIO2PIN;
+unsigned int volatile *const FIO2SET 		= (unsigned int*) AddrFIO2SET;
+unsigned int volatile *const FIO2CLR 		= (unsigned int*) AddrFIO2CLR;
+
+// All Interrupts:
+unsigned int volatile *const ISER0       = (unsigned int*) AddrISER0;
+
+//unsigned int volatile *const name_puntero  = (unsigned int*) direccion;
+
+
+/*-------------------------------------------
+* -- Prototype Functions:
+*-------------------------------------------*/
+void config_ADC(void);
+void config_GPIO(void);
+void config_Timer1(void);
+
+void enableInterrupts(void);
+
+void ADC_IRQHandler(void);
+void TIMER1_IRQHandler(void);
+
+unsigned short int unidad=0,decima=0;
+
+const char dec_to_7seg_cc[10]={  //abcdefg
+                 0b1111110, //0
+                 0b0110000, //1
+                 0b1101101, //2
+                 0b1111001, //3
+                 0b0110011, //4
+                 0b1011011, //5
+                 0b1011111, //6
+                 0b1110000, //7
+                 0b1111111, //8
+                 0b1110011  //9
+                };
+
+
+#endif /* CLASE7_EJERCICIO15_H_ */
+
+//===========================================================================================
+
+
+/*
+===============================================================================
+ Name        : clase7_Ejemplo5.c
+ Author      : $jwayar
+ Version     :
+ Copyright   : $ FCEFyN
+ Description : main definition
+===============================================================================
+*/
+
+/* ---------------------------------------------------------
+ *  @InPut:
+ *	 	PO[23] as AD0[0]
+ *
+ *	@OutPut:
+ *		P0[22]: Led_OFF-ON: de acuerdo a la lectura del conversor, si
+ *							supera o no la mitad de la Vref
+ *
+ * Conexión1:
+ *	Pin28 V+ ----/\/\/\/\/\---- GND
+ *					  |
+ *		              |
+ *		           P0[23] "AD0.0"(in)
+ *
+ * Conexión2:
+ *	Pin28 V+ ----/\/\/\/\/\---- GND
+ *					  |
+ *		              |
+ *		           P0[24] (in) "AD0.1"
+ *
+ * Conexión3:  DISPLAY unidad, decena
+ *
+ *	Modificar el ejemplo del ADC para que:
+ *	 mediante dos display de 7 segmentos se muestre el valor de tensión de
+ * un segundo canal del ADC que se encuentra conectado a un potenciómetro.
+ *
+ * Adjuntar un video mostrando el funcionamiento de los dos potenciómetros,
+ *  junto con el valor medido por un voltímetro
+ *  conectado al potenciómetro que modifica el valor de los displays.
+ */
+
+
+//#include "Ej15Wayar.h"
+#define VREF 2.9
+#define RESOLUCION 0.1
+#define DIVISOR_ADC (4096*RESOLUCION)/(VREF)
+#define Port2_Pin(x)   x
+
+/*--------------------------------------------------
+          CONFIGURACION
+----------------------------------------------------*/
+//-- Config GPIO
+void config_GPIO(void){
+	*FIO0DIR |= (1<<22);
+
+	//-------------------------------------
+	//--FIO2DIR (Select Input/Output)
+		/* by default All Input
+		 */
+	// Output (Set 1):
+	*FIO2DIR |= (
+					(1<<Port2_Pin(0)) |
+					(1<<Port2_Pin(1)) |
+					(1<<Port2_Pin(2)) |
+					(1<<Port2_Pin(3)) |
+					(1<<Port2_Pin(4)) |
+					(1<<Port2_Pin(5)) |
+					(1<<Port2_Pin(6)) |
+					(1<<Port2_Pin(7)) |
+					(1<<Port2_Pin(8))
+				);
+}
+
+//-- Config ADC
+void config_ADC(void){
+
+	/*_1. POWER: ---------------------------------------------
+		In the PCONP register (Table 46) */
+	*PCONP |= (1<<12); // Power Control for Peripherals Register.
+	*AD0CR |= (1<<21); // The A-D converter is operational.
+
+	/*2. Clock: ----------------------------------------------
+	In the PCLKSEL0 register (Table 40), select PCLK_ADC.
+	 To scale the clock for the ADC, see bits CLKDIV in Table 532. */
+	*PCLKSEL0 |= (3<<24); // "00" -> CCLK/"4"
+	*AD0CR &=~ (255<<8);
+		/*
+			The APB clock (PCLK_ADC0) is divided by (this value plus one)
+			to produce the clock for the A-D converter,
+			wich should be less than or equal to 13MHz.
+		*/
+
+	*AD0CR |= (1<<16); // *ADOCR[16] = 1  modo conversiones repetittivas escaneando los pines seleccionados en "SEL"
+		/*                   *AD0CR |= (1<<16)
+			The AD converter does repeated conversions at up to 200Khz, scanning (if necessary)
+			througth the pins selected by bits set to ones in the SEL field.
+		*/
+
+	/* 3_ Pins: ------------------------------------------
+		Enable ADC0 pins through PINSEL registers.
+		Select the pin modes for the port pins with ADC0 functions
+		through the PINMODE registers (Section 8.5).
+	*/
+	*PINSEL1  |= (1<<14); // PO[23] as AD0[0]
+	*PINMODE1 |= (1<<15); // PO[23] Pin has neither PullUp nor PullDown resistor enabled.
+	*PINSEL1  |= (1<<16); // PO[24] as AD0[1]
+	*PINMODE1 |= (1<<17); // PO[24] Pin has neither PullUp nor PullDown resistor enabled.
+
+	*AD0CR |= (1<<0); // AD0.0 seleccionado
+	*AD0CR |= (1<<1); // AD0.1 seleccionado
+
+	/*	4_ Interrupts: ----------------------------------
+		To enable interrupts in te ADC, see Table 536. Interrupts are enabled
+		in the NVIC using the appropriate Interrupt Set Enable register.
+	*/
+	* AD0INTEN = 3 ;
+		/* 				>AD0INTEN<
+			This register allows control over wich A-D channels generate an interrupt
+			when a conversion complete.
+
+			Completaton of a conversion on ADC channel 0 will not generate an interrupt.
+		*/
+
+}
+
+//-- Config Timer1
+void config_TIMER1(void){
+  // Config Timer1: Mode Match (Multiplexado 20mseg)
+  *PCONP|=(3<<1);   //enciendo el periferico del timer
+  *PCLKSEL0|=(3<<4);  //peripheral clock: system clock Timer1 cclk/8
+
+  *T1EMR|=(15<<4);
+  *T1EMR|=1;
+  *T1EMR&=~(1<<1);
+  *T1MCR|=3;      //reset on MR0 the TC will be reset if MR0 matches it. interrup on MR0: an interrup is
+                  //generated when MR0 matches the value in the TC
+  *T1MR0=4000;    //match register 0 6450
+
+  *T1TCR|=1;      //habilito el registro del control del timer
+}
+/*--------------------------------------------------
+          METODOS
+----------------------------------------------------*/
+void enableInterrupts(void){
+
+	*ISER0 |= (1<<22); // ADC Interrupt Enable;
+	*ISER0 |= (1<<2);   // Enable Timer1 Interrupt
+}
+
+//-- Display
+void display(unsigned int decimal){
+  if(decimal<10 )
+  {
+    *FIO2PIN = dec_to_7seg_cc[decimal];
+  }
+}
+
+/*--------------------------------------------------
+          SUBRUTINAS
+----------------------------------------------------*/
+void ADC_IRQHandler(void){
+	unsigned short volatile ADC0Value0 = 0;
+	unsigned short volatile ADC0Value1 = 0;
+	//volatile float volts=0;
+	unsigned short volatile volts=0;
+
+	if ((*AD0STAT&1)==1) // AD0.0 is Done!
+	{
+		ADC0Value0=(*AD0DR0>>4)&0xFFF; // *AD0DR0 contains the most recent conversion
+		if(ADC0Value0<2047)
+			*FIO0SET|=(1<<22); // Vadc < Vref/2 -> Prendo Led22
+		else
+			*FIO0CLR|=(1<<22); // Vadc > Vref/2 -> Apago Led22
+	}
+	if(((*AD0STAT>>1)&1)==1) // AD0.1 is Done!
+	{
+		ADC0Value1=(*AD0DR1>>4)&0xFFF; // *AD0DR0 contains the most recent conversion
+		volts= ADC0Value1/ ((int)DIVISOR_ADC ) ;
+
+		unidad= volts/10 ;
+		//  unidades con redondeo
+		decima = volts % 10;
+		if(unidad*10+decima+0.5 < volts)
+			decima+=1;
+	}
+
+}
+
+void TIMER1_IRQHandler(void){
+	static unsigned short int EnableUnidad=0;
+
+	if(EnableUnidad){
+		*FIO2CLR|= (1<<Port2_Pin(8));
+		display(decima);
+		//*FIO2PIN = dec_to_7seg_cc[unidad];
+		*FIO2SET|= (1<<Port2_Pin(7));
+		EnableUnidad=!EnableUnidad;
+	}
+	else{
+		*FIO2CLR|= (1<<Port2_Pin(7));
+		display(unidad);
+		//*FIO2PIN = dec_to_7seg_cc[decena];
+		*FIO2SET|= (1<<Port2_Pin(8));
+		EnableUnidad=!EnableUnidad;
+	}
+	*T1IR|=1;  //MR0 interrupt flag for match channel 0
+}
+/****************************************************
+          MAIN
+*****************************************************/
+int main (void){
+
+	config_ADC();
+	config_GPIO();
+	config_TIMER1();
+	enableInterrupts();
+	while(1){
+
+	}
+
+	return 0;
+}
+
+
+

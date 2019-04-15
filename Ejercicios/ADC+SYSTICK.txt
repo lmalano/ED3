@@ -1,0 +1,192 @@
+/*
+===============================================================================
+ Name        : UART-ENVIAR-DISTANCIA.c
+ Author      : $(author)
+ Version     :
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+
+#ifdef __USE_CMSIS
+#include "LPC17xx.h"
+#endif
+
+#include <cr_section_macros.h>
+// Interrupciones y configuraciones globales
+unsigned int volatile * const PINSEL1 = (unsigned int *) 0x4002C004;
+unsigned int volatile * const PINSEL0 = (unsigned int *) 0x4002C000;
+unsigned int volatile * const FIO0DIR0 = (unsigned int *) 0x2009C000;
+unsigned int volatile * const FIO0DIR2 = (unsigned int *) 0x2009C002;
+unsigned int volatile * const FIO0SET0 = (unsigned int *) 0x2009C018;
+
+
+unsigned int volatile *const FIO0DIR = (unsigned int*) 0x2009c000;
+unsigned int volatile *const FIO0SET = (unsigned int*) 0x2009c018;
+unsigned int volatile *const FIO0CLR = (unsigned int*)0x2009c01c;
+
+unsigned int volatile * const FIO3DIR = (unsigned int *)0x2009C060; //led verde azul
+unsigned int volatile * const FIO3SET = (unsigned int *)0x2009C078;
+unsigned int volatile * const FIO3CLR  = (unsigned int *)0x2009C07C;
+
+
+unsigned int volatile * const FIO0CLR0 = (unsigned int *) 0x2009C01C;
+unsigned int volatile * const ISER0 = (unsigned int *) 0xE000E100;
+
+//
+
+unsigned int volatile * const ICER0 = (unsigned int *) 0xE000E180;
+unsigned int volatile * const PCONP = (unsigned int *) 0x400FC0C4;
+
+// Punteros ADC
+unsigned int volatile * const AD0CR = (unsigned int *) 0x40034000;
+unsigned int volatile * const AD0INTEN = (unsigned int *) 0x4003400C;
+unsigned int volatile * const AD0GDR = (unsigned int *) 0x40034004;
+unsigned int volatile * const AD0DR0 =(unsigned int *) 0x40034010;
+unsigned int volatile * const PCLKSEL0 =(unsigned int *)0x400FC1A8;
+unsigned int volatile * const ADSTAT =(unsigned int *)0x40034030;
+
+
+//punteros SYSTICK
+unsigned int volatile * const STCTRL = (unsigned int *)0xE000E010;
+unsigned int volatile * const STRELOAD = (unsigned int *)0xE000E014;
+unsigned int volatile * const STCURR = (unsigned int *)0xE000E018;
+
+unsigned int j;
+
+unsigned int resultadoADC; // aca se almacena el resultado del ADC
+
+
+void prender(int); // funcion para encender los leds
+void ADC_IRQHandler(void);
+void  SysTick_Handler(void);
+void pasomotor1(void);
+void pasomotor2(void);
+
+// INICIO DEL PROGRAMA PRINCIPAL
+int main(void) {
+
+// CONFIGURAMOS LAS SALIDAS Y ENTRADAS
+
+	*FIO0DIR2 &=~(1<<23); // PIN P0[23]=pin15 COMO ENTRADA.//
+    *PINSEL1 |= (1<<14);// PIN P0[23] UTILIZO LA FUNCION COMO AD0.
+    //CONFIG leds para el ADC
+
+    LPC_GPIO0->FIODIR |= (1 << 22); // led rojo port0pin22 de la placa como salida
+    LPC_GPIO3->FIODIR |= (1 << 25); // led verde de la placa como salida
+//CONFIG DEL MOTOR
+   	LPC_GPIO0->FIODIR |= (1<<8); //PIN P0.8 COMO SALIDA PARA STEP
+   	LPC_GPIO0->FIODIR |= (1<<9); //PIN 0.9 COMO SALIDA PARA DIR
+
+// CONFIGURO ADC COMO INTERRUPCION MODO BURST
+
+    *PCONP |=(1<<12); //ENERGIZO EL PERIFERICO(ADC).bit12 PCADC
+	*AD0CR |= (1<<21); // ENCIENDO EL CONVERSOR.
+	*AD0CR |= (1<<0); // ELIGO EL CANAL 0 DEL CONVERSOR.NO SERIA NECESARIO
+	*PCLKSEL0 &= ~(1 << 24); // selecciono clock de adc en sysclock / 4
+	*AD0CR |= (1<<8); // divido PCLk por 2, 25 / 2 y de 12,5 que es < 13Mhz
+	//*ISER0 |= (1<<22);	//HABILITO LA FUNCION DE LA INTERRUPCION DEL ADC.
+	*AD0CR |= (1<<16); // activo modo Burst-conversion continua
+	//*AD0INTEN |= (1<<0); // SETEO LA BANDERA DE LA INTERRUPCION POR AD0.0 (CREO QUE NO ES NECESARIO)
+	*AD0INTEN &= ~(1<<8); // bit ADGINTEN debe ser 0 en modo burst.
+	*AD0CR &= ~ (1<<24); // bit start debe ser 000, en modo BURST, para iniciar la conversion
+
+//CONFIG DE SYSTICK
+
+	*STRELOAD=0xF423F; //valor cargado en el contador Para 10ms
+	*STCURR =0;
+	*STCTRL|=7; //bit0 ENABLE=1, TICKINT=1 interrupcion por sistick habilitada, CLKSOURCE=1 el clok del cpu es seleccionado
+
+
+	while(1) {
+
+
+	}
+	return 0 ;
+}
+
+
+//Funcion de la interrupcion del ADC
+
+void ADC_IRQHandler(void){
+
+	}
+
+//Funcion de la interrupcion del TIMER0
+
+void  SysTick_Handler(void){
+	//aqui va la interrupcion
+
+	resultadoADC = *AD0DR0; // 1) se guarda el valor de ad0gdr en resultadoADC (tabla 533)
+	resultadoADC >>= 8;		// 2) se desplaza 8 lugares a derecha para justificar los bits del resultado a derecha
+	resultadoADC &= 0x000000ff; // 3) se enmascara para guardar exclusivamente los 8 bits del resultado
+
+
+	//j=(*AD0DR0>>8)&0xff;//se guarda el valor real de la convercion de ADODRO-RESULT en j
+	     	 	 	 	 	// se en enmascara para guardar los 8 bits del resultado mas significativo
+	*AD0INTEN |= (1<<0); // Seteo la bandera de la interrupcion del ADC.
+
+	prender(resultadoADC); // LLamo a la funcion prender.
+
+}
+void prender(int p)
+{
+
+
+	if(0<=p && p<180)
+	{
+
+		LPC_GPIO3->FIOSET |= (1 << 25);// apago led verde
+		LPC_GPIO0->FIOCLR |= (1 << 22); // encender led ROJO
+		pasomotor2();
+	}
+
+	else if(180<=p  && p<=190)
+			{
+
+			LPC_GPIO0->FIOSET |= (1 << 22);// apago led rojo
+			LPC_GPIO3->FIOSET |= (1 << 25); // apago un led verde
+			//pasomotor1();
+			}
+	else if(190<p  && p<256)
+				{
+
+				LPC_GPIO0->FIOSET |= (1 << 22);// apago led rojo
+				LPC_GPIO3->FIOCLR |= (1 << 25); // prendo un led verde
+				pasomotor1();
+				}
+}
+
+
+void pasomotor1(void){//se queda aca
+
+
+	LPC_GPIO0->FIOSET |= (1<<9);
+	for(int i=0;i<1;i++){
+	LPC_GPIO0->FIOSET |= (1<<8);
+	for(int yi=0;yi<100000;yi++){ }
+	  // delayUS(1000);
+	   //startTimer0();
+	LPC_GPIO0->FIOCLR |= (1<<8);
+	   //delayUS(1000);
+	   //startTimer0();
+	for(int j=0;j<100000;j++){}
+	}
+}
+
+
+void pasomotor2(void){//se queda aca
+
+
+	LPC_GPIO0->FIOCLR |= (1<<9);
+	for(int i=0;i<1;i++){
+	LPC_GPIO0->FIOSET |= (1<<8);
+	for(int yi=0;yi<100000;yi++){ }
+	  // delayUS(1000);
+	   //startTimer0();
+	LPC_GPIO0->FIOCLR |= (1<<8);
+	   //delayUS(1000);
+	   //startTimer0();
+	for(int j=0;j<100000;j++){}
+	}
+}

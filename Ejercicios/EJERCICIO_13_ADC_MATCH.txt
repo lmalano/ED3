@@ -1,0 +1,333 @@
+//
+
+/*
+===============================================================================
+ Name        : CONCEPCION ALVARADO iAN ERIK
+ Author      : EJERCICIO 14 DIGITALES 3
+ Version     : ADC_MATCH_TIMER
+ Copyright   : $(copyright)
+ Description : main definition
+===============================================================================
+*/
+
+
+//====================================================================================================================
+
+#define AddrFIO1DIR  0x2009C020
+#define AddrFIO0DIR 0X2009C000
+#define AddrFIO0SET 0X2009C018
+#define AddrFIO0CLR 0X2009C01C
+#define AddrFIO0PIN 0X2009C014
+#define AddrPINMODE0 0X2009C040
+#define AddrPINSEL1 0x4002C004
+
+
+
+#define AddrPINSEL0 0X4002C000
+#define AddrIO0IntEnR 0X40028090 //registros asociados a las
+#define AddrIO0IntEnF 0X40028094 // interrupciones por GPIO
+#define AddrIO0IntStatR 0X40028084
+#define AddrIO0IntStatF 0X40028088
+#define AddrIO0IntClr 0X4002808C
+
+#define AddrPCONP 0X400FC0C4
+#define AddrPCLKSEL0 0X400FC1A8
+#define AddrPINSEL3 0X4002C00C
+#define AddrT1EMR 0X4000803C
+#define AddrT1MCR 0X40008014
+#define AddrT1MR0 0X40008018
+#define AddrISER0 0XE000E100
+#define AddrT1TCR 0X40008004
+#define AddrT1IR 0X40008000
+#define AddrT1PR 0X4000800C
+
+unsigned int volatile * const FIO1DIR =( unsigned int *) AddrFIO1DIR ;
+unsigned int volatile *const FIO0DIR=(unsigned int*)AddrFIO0DIR;
+unsigned int volatile *const FIO0SET=(unsigned int*)AddrFIO0SET;
+unsigned int volatile *const FIO0CLR=(unsigned int*)AddrFIO0CLR;
+unsigned int volatile *const FIO0PIN=(unsigned int*)AddrFIO0PIN;
+
+unsigned int volatile *const PINSEL0= (unsigned int*) AddrPINSEL0;
+unsigned int volatile *const IO0IntEnR=(unsigned int*) AddrIO0IntEnR;
+unsigned int volatile *const IO0IntEnF= (unsigned int*) AddrIO0IntEnF;
+unsigned int volatile *const IO0IntStatR= (unsigned int*) AddrIO0IntStatR;
+unsigned int volatile *const IO0IntStatF= (unsigned int*) AddrIO0IntStatF;
+unsigned int volatile *const IO0IntClr= (unsigned int*) AddrIO0IntClr;
+unsigned int volatile * const PINSEL1 = ( unsigned int *) AddrPINSEL1 ;
+
+unsigned int volatile *const PCONP=(unsigned int*)AddrPCONP;
+unsigned int volatile *const PCLKSEL0=(unsigned int*)AddrPCLKSEL0;
+unsigned int volatile *const PINSEL3=(unsigned int*)AddrPINSEL3;
+unsigned int volatile *const T1EMR=(unsigned int*)AddrT1EMR;
+unsigned int volatile *const T1MCR=(unsigned int*)AddrT1MCR;
+unsigned int volatile *const T1MR0=(unsigned int*)AddrT1MR0;
+unsigned int volatile *const ISER0=(unsigned int*)AddrISER0;
+unsigned int volatile *const T1TCR=(unsigned int*)AddrT1TCR;
+unsigned int volatile *const T1IR=(unsigned int*)AddrT1IR;
+unsigned int volatile *const T1PR=(unsigned int*)AddrT1PR;
+unsigned int volatile *const PINMODE0 = (unsigned int*) AddrPINMODE0;
+
+
+//===================================================================================================================
+                                  //PINSEL4 0x4002 C010
+//#define AddrFIO0DIR 0x2009C000 // Define las posiciones de memorias
+ #define AddrPINSEL4  0x4002C010
+  #define AddrIO2IntEnF 0x400280B4   //IO2IntEnF 0x4002 80B4
+  #define AddrIO2IntClr  0x400280AC   //IO2IntClr - 0x4002 80AC)
+
+//#define AddrFIO0SET 0x2009C018 // donde se encuentran los registros
+//#define AddrFIO0CLR 0x2009C01C // que configuran al GPIO0
+//#define AddrPCONP 0x400FC0C4
+#define AddrAD0CR 0x40034000
+#define AddrAD0INTEN 0x4003400C
+#define AddrPINMODE1 0x4002C044
+#define AddrPINSEL1 0x4002C004
+#define AddrAD0DR0 0x40034010
+//#define AddrPCLKSEL0 0x400FC1A8
+//#define AddrISER0 0xE000E100 //pagina 79
+ #define AddrAD0STAT  0x40034030                                            //ADSTAT - 0x4003 4030)
+//#define AddrAD0GDR 0x40034004
+
+
+unsigned int volatile * const IO2IntClr  = (unsigned int *) AddrIO2IntClr;
+unsigned int volatile * const IO2IntEnF  = (unsigned int *) AddrIO2IntEnF;
+unsigned int volatile * const PINSEL4 = (unsigned int *) AddrPINSEL4;
+//unsigned int volatile * const FIO0DIR = (unsigned int *) AddrFIO0DIR;
+//unsigned int volatile * const FIO0SET = (unsigned int *) AddrFIO0SET;
+//unsigned int volatile * const FIO0CLR = (unsigned int *) AddrFIO0CLR;
+//unsigned int volatile * const PCONP = (unsigned int *) AddrPCONP;
+unsigned int volatile * const AD0CR = (unsigned int *) AddrAD0CR;
+unsigned int volatile * const AD0INTEN = (unsigned int *) AddrAD0INTEN;
+unsigned int volatile * const PINMODE1 = (unsigned int *) AddrPINMODE1;
+//unsigned int volatile * const PINSEL1 = (unsigned int *) AddrPINSEL1;
+unsigned int volatile * const AD0DR0 = (unsigned int *) AddrAD0DR0;
+//unsigned int volatile * const PCLKSEL0 = (unsigned int *) AddrPCLKSEL0;
+//unsigned int volatile * const ISER0 = (unsigned int *) AddrISER0;
+unsigned int volatile * const AD0STAT = (unsigned int *) AddrAD0STAT;   //  ADSTAT - 0x4003 4030)                                                                    //ADSTAT - 0x4003 4030)
+//unsigned int volatile * const AD0GDR = (unsigned int *) AddrAD0GDR;
+
+void adcConfig(void);
+void ADC_IRQHandler(void);
+void EINT0_IRQHandler(void);
+void TIMER1_IRQHandler(void);
+void EINT3_IRQHandler(void);
+
+int main(void) {
+	//===========================================================================================================================
+	//================================================================================================================================
+	//CONFIGURACION DEL TIMER1
+	*PINSEL0 &=~(3<<30);//00 Primary (default) function, typically GPIO port P0[15] COMO GPIO
+		*PINSEL1 &= ~(1<<0);//GPIO port P0[16] COMO GPIO
+		*FIO0DIR &=~(3<<15);//HABILITO LAS ENTRADAS P0[15] Y P0[16]
+		*FIO1DIR |= (1 << 22);
+		*FIO1DIR |= (1 << 25);//HABILITO LOS MATCH COMO SALIDAS
+		*FIO1DIR &= ~ (1 << 18 );// CAPTURAS COMO ENTRADAS
+		*FIO1DIR &= ~ (1 << 19 );
+
+
+
+
+
+		//*PINMODE0 &= ~(0x03<<15);OBSERVACION PARA LA INTERRUPCIONES POR FLANCO NO SE ACTIVA LOS PULLUP
+		//*PINMODE0 &= ~(0x03<<16);
+
+		*IO0IntEnF|=(1<<15); //enable falling edge interrupt for P.0.15//HABILITA INTERRUPCION EXTERNA FLANCO DE BAJADA
+		*IO0IntEnF|=(1<<16); //enable falling edge interrupt for P.0.16
+
+
+		*PCONP |= (1<<2);		//enciendo el periferico del timerELIJO
+		//*PCLKSEL0 |= (1<<4);
+	   // *PCLKSEL0 |= ( 2 <<4);
+	    *PCLKSEL0 &= ~( 1 <<4); //aqui trabaja con 1MHZ
+		//peripheral clock: system clock ELIJO PARA EL TIMER1 CON LA FUNCION 1 QUE ES IGUAL A CCLK
+		/*Un par de bits en un registro de Selección de Reloj Periférico controla la velocidad de la señal de reloj
+	      que se suministrará al periférico correspondiente como se especifica en la Tabla 40, Tabla 41 y
+	      Tabla 42.
+	      Observación: el reloj periférico para el bloque RTC está fijado en CCLK / 8.
+		 * 00 PCLK_peripheral = CCLK/4 00
+	       01 PCLK_peripheral = CCLK
+	       10 PCLK_peripheral = CCLK/2
+	        11 PCLK_peripheral = CCLK/8, except for CAN1, CAN2, and
+	CAN filtering when “11” selects = CCLK/6.
+		 *
+		 */
+		*PINSEL3 |= (3 <<12);	//pins: MATCH1.0   13:12 P1.22==PAD[4]GPIO Port 1.22 MCOB0 USB_PWRD MAT1.0 00 FUMCION 11 MATCH 0
+		//13:12 P1.22 GPIO Port 1.22    MCOB0(FUNCION 01)      USB_PWRD(FUNCION 10)         MAT1.(FUNCION 11)     0 00
+		*PINSEL3 |= (3 <<18);//MODO MATCH1.1 P1[25] ==PAD[5]
+		//*PINSEL3 |= (3 << 4);//MODO CAP1.0//25:24 P1.18 GPIO Port 1.28  MCOA2FUNCION[01]    PCAP1.0[10]     MAT0.0 00[11]
+	     //P1[18]==PAD[1]
+		//*PINSEL3 |= (3 << 6);//MODO CAP1.1[11] P1[19] == PAD[2]
+		*T1EMR|=(3<<4);//5: 4 EMC0 External Match Control 0. Determina la funcionalidad de la Coincidencia Externa 0. La Tabla 433 muestra el
+		//codificación de estos bits. AQUI ESTA CONGURADO COMO TOGGLE ALTERNAR
+		/*
+	     =====================================================================
+	        FUNCION DE T1EMR
+	        00 No hacer nada.
+	       01 Borre el bit / salida de coincidencia externa correspondiente a 0 (el pin MATn.m está BAJO si se fija).
+	       10 Establezca el bit / salida de concordancia externa correspondiente en 1 (el pin MATn.m está en ALTO si se fija).
+	       11 Alternar el bit / salida de coincidencia externa correspondiente
+
+	      ================================================================================
+		*/
+		*T1MCR|=3;			//reset on MR0 the TC will be reset if MR0 matches it. interrup on MR0: an interrup is
+							//generated when MR0 matches the value in the TC
+		//Match Control Register. El MCR se usa para controlar si una interrupción es
+		//generado y si el TC se restablece cuando ocurre una coincidencia.
+		//EL T1MCR ES EL QUE CONTROLA LAS INTERRUPCIONES COMO CONSECUENCIA DE LAS COINCIDENCIAS O MATCHS
+		//00 Do Nothing
+		////DE REFIERE AL TEMR TODO ABAJO TABLA 433
+		//01 Borre el bit / salida de coincidencia externa correspondiente a 0 (el pin de MATn.m es BAJO si está anclado).
+		//10 Establezca el bit / salida de coincidencia externa correspondiente en 1 (el pin de MATn.m es ALTO si está anclado).
+		//11 Alterne el bit / salida de coincidencia externa correspondiente.
+
+		*T1MR0=3645000;
+		//match register
+		//*T1MR0= 45400000;
+		//*T1MR0= 1000000;//AQUI CALCULAMOS para un segundo si el cclk == pclksel0
+		//Match Register 0. MR0 se puede habilitar a través del MCR para restablecer
+		//el TC, detiene tanto el TC como la PC, y / o genera una interrupción cada vez que MR0 coincide con el TC.
+		*ISER0|=(1<<2);/// Interrumpir Registros Habilitar Conjunto. Estos 2 registros permiten habilitarVER TABLA 52
+		//INTERRUPCION PARA TIMER1 1<< 2//interrumpciones y vuelve a leer la interrupción habilita funciones periféricas específicas
+		/*
+		El registro ISER0 permite habilitar las primeras 32 interrupciones periféricas o leer el
+		estado habilitado de esas interrupciones. Las interrupciones restantes están habilitadas a través del ISER1
+		registrarse (Sección 6.5.2). La desactivación de las interrupciones se realiza a través de ICER0 e ICER1
+		registros (Sección 6.5.3 y Sección 6.5.4).
+		*/
+		*ISER0|=(1<<21); //external interrupt 3 interrupt enable, VER TABLA 52INTERRUPCONES EXTERNAS HABILITADAS
+
+
+		*T1TCR|=1;			//habilito el registro del control del timer
+		//Registro de control de temporizador TCR. El TCR se usa para controlar el temporizador
+		//Funciones de contador. El contador del temporizador se puede desactivar o restablecer a través del TCR.
+
+
+
+
+
+
+		*FIO0DIR|=(1<<22);
+
+
+	//==========================================================================================================================
+	//==============================================================================================================================
+// unsigned short volatile ADC0Value=0;
+adcConfig();
+*FIO0DIR |= (1<<22);
+
+
+
+while(1) {
+// ADC0Value = (*AD0DR0>>4) & 0xFFF;
+// if(ADC0Value<2047)
+// *FIO0SET |= (1 << 22);
+// else
+//*FIO0CLR |= (1 << 22);
+ }
+ return 0 ;
+}
+void adcConfig()
+{
+//1. Power: In the PCONP register (Table 46), set the PCADC bit.
+*PCONP |=(1<<12); //Power Control for Peripherals Register.
+*AD0CR|=1<<21; //The A/D converter is operational.
+//2. Clock: In the PCLKSEL0 register (Table 40), select PCLK_ADC. To scale the clock for the ADC, see bits CLKDIV in Table 532.
+*PCLKSEL0 |= (3<<24);
+
+*AD0CR &= ~(255<<8); /*The APB clock (PCLK_ADC0) is divided by (this value plus one) to produce the clock for
+the A/D converter, which should be less than or equal to 13 MHz.*/
+//======================================================================
+//*AD0CR|=1<<16; /* ESTA EN MODO BURSTThe AD converter does repeated conversions at up to 200 kHz, scanning (if necessary)
+//through the pins selected by bits set to ones in the SEL field.*/
+//3. Pins: Enable ADC0 pins through PINSEL registers. Select the pin modes for the port pins with ADC0 functions through the
+//==================================================================================
+*AD0CR &= ~(1<<16);//deshabilito el modo Burst
+*AD0CR |= (0b010<<24);//010 Start conversion when the edge selected by bit 27 occurs on the P2.10 / EINT0 / NMI pin.
+                   //Set the pin function to EINT0 in PINSEL4 register
+
+  *PINSEL4 |= (1 << 20)  ;                       //21:20 P2.[10]=H[51] GPIO Port 2.10 EINT0 funcion [01]Entrada de interrupción externa 0 - Un nivel activo bajo / alto o descendente / ascendente
+                                                 //borde de entrada de interrupción de propósito general. Este pin puede ser usado para despertar.
+                                                   //El procesador de los modos de suspensión, suspensión profunda o apagado.
+  //18 ISE_EINT0 External Interrupt 0 Interrupt Enable. See functional description for bit 0.
+
+  *ISER0 |= (1 << 18);//HABILITO EINTO
+                       //10 P2.10EF Enable falling edge interrupt for P2.10
+   *IO2IntEnF |=(1 << 10 );                      //Table 118. GPIO Interrupt Enable for port 2 Falling Edge (IO2IntEnF - 0x4002 80B4) bit
+//================================================================================================
+
+
+//PINMODE registers (Section 8.5).
+*PINMODE1 |= 1<<15; //Pin has neither pull-up nor pull-down resistor enabled.
+*PINSEL1 |= 1<<14;//P0[23] CANAL 0 H[15]
+//4. Interrupts: To enable interrupts in the ADC, see Table 536. Interrupts are enabled in the NVIC using the appropriate Interrupt
+//Set Enable register.
+*AD0INTEN=1; // *ADOINTEN |= (1 << 0)This register allows control over which A/D channels generate an interrupt when a conversion is
+//complete.
+/*
+ *  Este registro permite el control sobre qué canales A / D generan una interrupción cuando un
+la conversión está completa Por ejemplo, puede ser conveniente usar algunos canales A / D para
+Monitorear los sensores mediante la realización continua de conversiones en ellos. El más reciente
+Los resultados son leídos por el programa de aplicación siempre que son necesarios. En este caso, un
+la interrupción no es deseable al final de cada conversión para algunos canales A / D
+ *
+ *
+ */
+ //Completion of a conversion on ADC channel 0 will not generate an interrupt.
+*ISER0|=(1<<22); //ADC Interrupt Enable.
+}
+
+//===============================================================================================================
+
+
+
+void TIMER1_IRQHandler(void){
+
+	/*while ( !( *AD0DR0 << 31 )& 1 ) ////DONE = 1 SE TERMINO LA CONVERSION SE PONE EN 1 AQUI ESPERA EN UN CICLO INFINITO HASTA QUE AD0DR0=1
+
+			{
+
+
+			}
+*/
+	unsigned short volatile ADC0Value=0;
+			ADC0Value = (*AD0DR0>>4) & 0xFFF;//RESULT
+			if(ADC0Value<2047)
+			*FIO0SET|= (1 << 22);
+			else
+			*FIO0CLR |= (1 << 22);
+
+
+
+
+			*AD0STAT &= ~ (1 << 0); //VOLVEMMOS A DONE = 0;
+			*AD0STAT  &=  ~(1 << 16);//se afirma y se habilita para contribuir a la interrupción A / D a través del registro ADINTEN
+			//*FIO0CLR |= (1 << 22); CON ESTO COMPROBE QUE SI REALMENTE ESTA CONVIRTIENDO CON EL TIMER1
+
+	*T1IR|=1;				//MR0 interrupt flag for match channel 0
+ }
+//=================================================================================================================
+
+void EINT3_IRQHandler(void){
+
+	if((*IO0IntStatF>>15)&1){//  EJECUTA LA INTERRUPCION  EN EL PIN 15 == H[13]
+
+      *FIO0CLR |= (1<< 22);
+
+		}
+	if((*IO0IntStatF>>16)&1){ //status of rising edge interrupt for P.0.15,PARA EL PIN 16==H[14]
+
+	}
+	*IO0IntClr|=(1<<15);
+	*IO0IntClr|=(1<<16);
+}
+
+//==================================================================================================================
+
+
+
+
+
+
+
+
+

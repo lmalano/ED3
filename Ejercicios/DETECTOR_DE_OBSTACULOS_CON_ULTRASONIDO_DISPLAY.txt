@@ -1,0 +1,300 @@
+//DETECTOR_DE_OBSTACULOS_CON_ULTRASONIDO_DISPLAY
+
+#define AddrPCONP 0X400FC0C4
+#define AddrPCLKSEL0 0X400FC1A8
+#define AddrPCLKSEL1 0x400FC1AC
+#define AddrPINSEL3 0X4002C00C
+#define AddrISER0 0XE000E100
+
+//--------TIMER0------------
+#define AddrT0EMR 0X4000403C
+#define AddrT0MCR 0X40004014
+#define AddrT0MR0 0X40004018
+#define AddrT0TCR 0X40004004
+#define AddrT0IR  0X40004000
+#define AddrT0PR  0X4000400C
+
+//--------TIMER1------------
+#define AddrT1EMR 0X4000803C
+#define AddrT1MCR 0X40008014
+#define AddrT1MR0 0X40008018
+#define AddrT1TCR 0X40008004
+#define AddrT1IR 0X40008000
+#define AddrT1PR 0X4000800C
+#define AddrT1CCR 0X40008028
+#define AddrT1CR0 0x4000802C
+
+//------TIMER3-----------
+#define AddrT3EMR 0X4009403C
+#define AddrT3MCR 0x40094014
+#define AddrT3MR0 0X40094018
+#define AddrT3TCR 0X40094004
+#define AddrT3IR 0X40094000
+#define AddrT3PR 0X4009400C
+
+//--------GPIO-------------
+#define AddrFIO0DIR 0X2009C000
+#define AddrFIO0SET 0X2009C018
+#define AddrFIO0CLR 0X2009C01C
+#define AddrFIO0PIN 0X2009C014
+
+//---------GPIO2---------------
+#define AddrFIO2DIR 0X2009C040
+#define AddrFIO2SET 0X2009C058
+#define AddrFIO2CLR 0x2009C05C
+#define AddrFIO2PIN 0x2009C054
+
+unsigned int volatile *const PCONP=(unsigned int*)AddrPCONP;
+unsigned int volatile *const PCLKSEL0=(unsigned int*)AddrPCLKSEL0;
+unsigned int volatile *const PCLKSEL1=(unsigned int*)AddrPCLKSEL1;
+unsigned int volatile *const PINSEL3=(unsigned int*)AddrPINSEL3;
+unsigned int volatile *const ISER0=(unsigned int*)AddrISER0;
+
+unsigned int volatile *const T0EMR=(unsigned int*)AddrT0EMR;
+unsigned int volatile *const T0MCR=(unsigned int*)AddrT0MCR;
+unsigned int volatile *const T0MR0=(unsigned int*)AddrT0MR0;
+unsigned int volatile *const T0TCR=(unsigned int*)AddrT0TCR;
+unsigned int volatile *const T0IR=(unsigned int*)AddrT0IR;
+unsigned int volatile *const T0PR=(unsigned int*)AddrT0PR;
+
+unsigned int volatile *const T1EMR=(unsigned int*)AddrT1EMR;
+unsigned int volatile *const T1MCR=(unsigned int*)AddrT1MCR;
+unsigned int volatile *const T1MR0=(unsigned int*)AddrT1MR0;
+unsigned int volatile *const T1TCR=(unsigned int*)AddrT1TCR;
+unsigned int volatile *const T1IR=(unsigned int*)AddrT1IR;
+unsigned int volatile *const T1PR=(unsigned int*)AddrT1PR;
+unsigned int volatile *const T1CCR=(unsigned int*)AddrT1CCR;
+unsigned int volatile *const T1CR0=(unsigned int*)AddrT1CR0;
+
+unsigned int volatile *const T3EMR=(unsigned int*)AddrT3EMR;
+unsigned int volatile *const T3MCR=(unsigned int*)AddrT3MCR;
+unsigned int volatile *const T3MR0=(unsigned int*)AddrT3MR0;
+unsigned int volatile *const T3TCR=(unsigned int*)AddrT3TCR;
+unsigned int volatile *const T3IR=(unsigned int*)AddrT3IR;
+unsigned int volatile *const T3PR=(unsigned int*)AddrT3PR;
+
+unsigned int volatile *const FIO0DIR=(unsigned int*)AddrFIO0DIR;
+unsigned int volatile *const FIO0SET=(unsigned int*)AddrFIO0SET;
+unsigned int volatile *const FIO0CLR=(unsigned int*)AddrFIO0CLR;
+unsigned int volatile *const FIO0PIN=(unsigned int*)AddrFIO0PIN;
+
+unsigned int volatile *const FIO2DIR= (unsigned int*) AddrFIO2DIR;
+unsigned int volatile *const FIO2SET= (unsigned int*) AddrFIO2SET;
+unsigned int volatile *const FIO2CLR= (unsigned int*) AddrFIO2CLR;
+unsigned int volatile *const FIO2PIN= (unsigned int*) AddrFIO2PIN;
+
+//-----Funciones-------
+void Timer0Config(void);
+void Timer1Config(void);
+void Timer3Config(void);
+extern void Pulso(void);
+void muestra(int);
+void dist(void);
+//-----Variables-------
+int distancia=0;
+int bandera;
+int valor1,valor2,valor3,valor4;
+int dist1,dist2,dist3,dist4;
+int radio1,radio2;
+//-------------------------
+int main(void){
+	*FIO0DIR|=(1<<2);    		//P0.2 salida, trigger sensor
+	*FIO2DIR |=255;             //P2.0 a P2.7 salidas segmentos del display
+	*FIO2DIR|=(29<<8);			//P2.8 a P2.12(sin P2.9 display enable)
+
+	valor1=0;
+	valor2=0;
+	valor3=0;
+	valor4=0;
+
+	bandera=0;				//banderas seteadas en 0
+							//b0=distancia b1=angulo b2=enviar_datos
+	Timer0Config();
+	Timer1Config();
+	Timer3Config();
+
+
+	*T0TCR|=1;					//enciende y reinicia el TMR0
+	*T3TCR|=1;
+	*T1TCR|=1;					//enciende el TMR1
+	*T1TCR|=(1<<1);
+				//habilito el registro del control del timer
+	*ISER0|=(1<<1);				//habilita interrupciones
+	*ISER0|=(1<<4);
+	*ISER0|=(1<<2);
+	while(1){
+		if((bandera&1)==1)
+			dist();
+
+	}
+	return 0;
+}
+
+void TIMER0_IRQHandler(void){
+	Pulso();					//envia el pulso
+	*T0IR=1;
+	*T1TCR|=(1<<1);
+}
+
+void TIMER1_IRQHandler(void){
+	static int a=0;
+	if(a==1){
+		distancia=*T1CR0-1750;		//calcula la distancia del objeto
+		bandera|=1;
+		a=0;
+	}
+	else{
+		*T1TCR&=~(1<<1);	//reinicia el TMR1
+		a=1;
+	}
+	*T1IR=(1<<4);
+}
+
+void TIMER3_IRQHandler(void){		//P2.0 a P2.7 Segmentos-- P2.8(sin P2.9) a P2.12 multiplexado
+	static int display=1;
+	display=(display*2);
+	if(display==16){
+		display=1;
+	}
+	if (display==1){
+		*FIO2CLR|=(1<<12);
+		*FIO2SET|=(1<<8);
+		muestra(valor1);
+	}
+	if(display==2){
+		*FIO2CLR|=(1<<8);
+		*FIO2SET|=(1<<10);
+		muestra(valor2);
+	}
+	if(display==4){
+		*FIO2CLR|=(1<<10);
+		*FIO2SET|=(1<<11);
+		muestra(valor3);
+	}
+	if(display==8){
+		*FIO2CLR|=(1<<11);
+		*FIO2SET|=(1<<12);
+		muestra(valor4);
+	}
+	if(valor4==12){
+			*FIO2CLR|=(1<<8);
+		}
+	*T3IR|=1;				//MR0 interrupt flag for match channel 0
+}
+
+void muestra(int numero){				//valor del display en logica negativa
+			switch (numero){			//modificar los valores que se envian
+					case 0 :
+						*FIO2SET|=255;
+						*FIO2CLR|=63;
+						break;
+					case 1 :
+						*FIO2SET|=255;
+						*FIO2CLR|=6;
+						break;
+					case 2 :
+						*FIO2SET|=255;
+						*FIO2CLR|=91;
+						break;
+					case 3 :
+						*FIO2SET|=255;
+						*FIO2CLR|=79;
+						break;
+					case 4 :
+						*FIO2SET|=255;
+						*FIO2CLR|=102;
+						break;
+					case 5 :
+						*FIO2SET|=255;
+						*FIO2CLR|=109;
+						break;
+					case 6 :
+						*FIO2SET|=255;
+						*FIO2CLR|=125;
+						break;
+					case 7 :
+						*FIO2SET|=255;
+						*FIO2CLR|=7;
+						break;
+					case 8 :
+						*FIO2CLR|=127;
+						break;
+					case 9 :
+						*FIO2SET|=255;
+						*FIO2CLR|=103;
+						break;
+					case 10 :
+						*FIO2SET|=127;
+						*FIO2CLR|=57;
+						break;
+					case 11 :
+						*FIO2SET|=127;
+						*FIO2CLR|=84;
+						break;
+					case 12 :
+						*FIO2SET|=127;
+						*FIO2CLR|=55;
+						break;
+					case 13 :
+						*FIO2SET|=127;
+						*FIO2CLR|=99;
+}}
+
+void dist(void){
+	distancia=distancia/240; //ver el termino a dividir
+	radio1=distancia&255;
+	radio2=(distancia>>8)&255;
+	dist1=0;			//tiene max de 60 cm
+	dist2=0;
+	dist3=0;
+	dist4=0;
+	if (distancia>=100){
+		//dist1=12;
+		while(distancia>100){
+			distancia=distancia-100;
+			dist4++;
+		}
+		/*while(distancia>10){
+						distancia=distancia-10;
+						dist3++;
+					}
+					dist2=distancia;*/
+				}
+	else{
+		dist1=11;
+		dist2=10;
+		while(distancia>=10){
+			distancia=distancia-10;
+			dist4++;
+		}
+		dist3=distancia;
+	}
+	valor1=dist1;			//temporal hasta que este el angulo
+	valor2=dist2;
+	valor3=dist3;
+	valor4=dist4;
+	bandera&=~1;
+}
+
+void Timer0Config(void){
+	*PCONP|=(3<<1);				//enciende TMR0
+	*PCLKSEL0|=(1<<2);			//TMR0clock=CCLK
+	*T0MCR|=3;					//interrumpe y reinicia el timer
+	*T0MR0=500000;				//envia el pulso cada medio segundo
+}
+
+void Timer1Config(void){
+	*PCLKSEL0|=(1<<4);			//enciende TMR1
+	*PINSEL3|=(3<<4);			//habilita CAP1.0
+	*T1CCR|=7;					//CAP1.0 interrumpe por ambos flancos
+}
+
+void Timer3Config(void){
+	*PCONP|=(1<<23);		//enciendo el periferico del timer
+	*PCLKSEL1|=(1<<14);	//peripheral clock: system clock
+	*T3MCR|=3;			//reset on MR0 the TC will be reset if MR0 matches it. interrup on MR0: an interrup is
+							//generated when MR0 matches the value in the TC
+	*T3MR0=7000;		//match register 0 6450
+}
+
+

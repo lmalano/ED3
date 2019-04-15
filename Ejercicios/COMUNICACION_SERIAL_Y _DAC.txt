@@ -1,0 +1,145 @@
+//COMUNICACION SERIA/UARTL Y DAC
+
+#define AddrSCS 0x400FC1A0
+#define AddrCCLKCFG 0x400FC104//UART Y EXTRAERPOR DAC 
+#define AddrPCLKSEL0 0x400FC1A8
+#define AddrPCLKSEL1 0x400FC1AC
+#define AddrCLKSRCSEL 0x400FC10C
+#define AddrPLL0CFG 0x400FC084
+#define AddrPLL0FEED 0x400FC08C
+#define AddrPLL0CON 0x400FC080
+#define AddrPLL0STAT 0x400FC088
+
+#define AddrPCONP 0x400FC0C4
+#define AddrPINSEL0 0x4002C000
+#define AddrU2LCR 0x4009800C
+#define AddrU2DLL 0x40098000
+#define AddrU2DLM 0x40098004
+#define AddrU2IER 0x40098004
+#define AddrISER0 0xE000E100
+#define AddrU2THR 0x40098000
+#define AddrU2LSR 0x40098014
+#define AddrU2RBR 0x40098000
+
+#define AddrDACR 	0x4008C000
+#define AddrDACCTRL	0x4008C004
+#define AddrDACCNTVAL 0x4008C008
+#define AddrPINSEL1 0x4002C004
+
+//---------GPIO2---------------
+#define AddrFIO2DIR 0X2009C040
+#define AddrFIO2SET 0X2009C058
+#define AddrFIO2CLR 0x2009C05C
+#define AddrFIO2PIN 0x2009C054
+
+unsigned int volatile *const SCS=(unsigned int*)AddrSCS;
+unsigned int volatile *const CCLKCFG=(unsigned int*)AddrCCLKCFG;
+unsigned int volatile *const PCLKSEL0=(unsigned int*)AddrPCLKSEL0;
+unsigned int volatile *const PCLKSEL1=(unsigned int*)AddrPCLKSEL1;
+unsigned int volatile *const CLKSRCSEL=(unsigned int*)AddrCLKSRCSEL;
+unsigned int volatile *const PLL0CFG=(unsigned int*)AddrPLL0CFG;
+unsigned int volatile *const PLL0FEED=(unsigned int*)AddrPLL0FEED;
+unsigned int volatile *const PLL0CON=(unsigned int*)AddrPLL0CON;
+unsigned int volatile *const PLL0STAT=(unsigned int*)AddrPLL0STAT;
+
+unsigned int volatile *const PCONP=(unsigned int*)AddrPCONP;
+unsigned int volatile *const PINSEL0=(unsigned int*)AddrPINSEL0;
+unsigned int volatile *const U2LCR=(unsigned int*)AddrU2LCR;
+unsigned int volatile *const U2DLL=(unsigned int*)AddrU2DLL;
+unsigned int volatile *const U2DLM=(unsigned int*)AddrU2DLM;
+unsigned int volatile *const U2IER=(unsigned int*)AddrU2IER;
+unsigned int volatile *const ISER0=(unsigned int*)AddrISER0;
+unsigned int volatile *const U2THR=(unsigned int*)AddrU2THR;
+unsigned int volatile *const U2LSR=(unsigned int*)AddrU2LSR;
+unsigned int volatile *const U2RBR=(unsigned int*)AddrU2RBR;
+
+unsigned int volatile *const DACR=(unsigned int*)AddrDACR;
+unsigned int volatile *const DACCTRL=(unsigned int*)AddrDACCTRL;
+unsigned int volatile *const DACCNTVAL=(unsigned int*)AddrDACCNTVAL;
+unsigned int volatile *const PINSEL1=(unsigned int*)AddrPINSEL1;
+
+unsigned int volatile *const FIO2DIR= (unsigned int*) AddrFIO2DIR;
+unsigned int volatile *const FIO2SET= (unsigned int*) AddrFIO2SET;
+unsigned int volatile *const FIO2CLR= (unsigned int*) AddrFIO2CLR;
+unsigned int volatile *const FIO2PIN= (unsigned int*) AddrFIO2PIN;
+
+void clockConfig(void);
+void uartConfig(void);
+void enviar(char);
+extern void Display(int);
+
+int main(void){
+	*FIO2DIR|=127;
+	*FIO2CLR|=127;
+
+	clockConfig();
+	uartConfig();
+	*PINSEL1|=(1<<21);
+	*PINSEL1&=~(1<<20);
+
+	while(1){
+	}
+	return 0;
+}
+
+void uartConfig(void){
+	*PCONP|=(1<<24); 		//UART 2 power/clock control bit
+	*PCLKSEL1&=~(3<<16);	//Peripheral clock selection for UART2:CCLK/4
+	*U2LCR|=3;				//Word length select:8-BIT character length, stop bit select:1stop bit,
+	*U2LCR|=(1<<3);
+	*U2LCR|=(1<<4);
+	*U2LCR&=~(1<<5);
+	//Parity Enable: Even parity
+	*U2LCR|=(1<<7);			//enable access to divisor latches
+	*U2DLL=14;				//The UARTn Divisor Latch LSB Register, along with the UnDLM
+	*U2DLM=0;				//register, determines the baud rate of the UARTn
+	*U2LCR&=~(1<<7); 		//Disable access to Divisor Latches
+	*PINSEL0|=(5<<20);		//Configure P0.10 as Tx and P0.11 as Rx
+	*U2IER|=5;				//Enables the REcieve Data Available interrupt for UARTn
+	*ISER0|=(1<<7);			//UART2 Interrupt Enable
+}
+
+void UART2_IRQHandler(void){
+	int k;
+	k=*U2RBR;
+	if(((*U2LSR>>2)&1)==1){
+		*DACR&=~(1023<<6);
+		Display(1);
+			}
+
+	else{
+		*DACR=(k<<6);	//carga valor en el DAC
+		Display(0);
+	}
+}
+
+void enviar(char c){
+	while((*U2LSR&(1<<5))==0);//check if UnTHR contains valid data or is empty
+	*U2THR=c;
+}
+
+void clockConfig(void){
+	*SCS=32;				//Main Oscillator is enabled
+	while((*SCS&(1<<6))==0); //Wait for Oscillator to be ready
+	//-------------------------------------------------------------------
+	*CCLKCFG=0x3;			//Setup Clock Divider:pllclk is divided by 4 to produce the CPU clock
+	//-------------------------------------------------------------------
+	*PCLKSEL0=0x0;			//Peripheral Clock Selection
+	*PCLKSEL1=0x0;
+	//-------------------------------------------------------------------
+	*CLKSRCSEL=0x1;			//Select Clock Source for PLL0
+	//-------------------------------------------------------------------
+	*PLL0CFG=0x50063;		//configure PLL0: M=100 N=6
+	*PLL0FEED=0xAA;
+	*PLL0FEED=0x55;
+	//-------------------------------------------------------------------
+	*PLL0CON=0x01;			//PLL0 Enable
+	*PLL0FEED=0xAA;
+	*PLL0FEED=0x55;
+	while(!(*PLL0STAT&(1<<26))); //Wait for PLOCK0
+	//-------------------------------------------------------------------
+	*PLL0CON=0x03;			//PLL0 Enable & Connect
+	*PLL0FEED=0xAA;
+	*PLL0FEED=0x55;
+	while(!(*PLL0STAT&((1<<25)|(1<<24)))); //Wait for PLLC0_STAT & PLLE0_STAT
+} 

@@ -1,0 +1,57 @@
+//MODO CAPTURE CON LED
+,AL PRESIONAR EL P1[26] QUE ES EL CANAL DE CAPTURA PRENDE UN LED
+
+//ejemplo de captura
+
+//LED
+#define LED     (1 << 22)
+#define LED_ON     LPC_GPIO0->FIOSET=LED
+#define LED_OFF    LPC_GPIO0->FIOCLR=LED
+#define LED_TOG    LPC_GPIO0->FIOPIN^=LED
+
+void TIMER0_IRQHandler(void)//REALIZO DOS PREGUNTAS HAY UNA INTERRUPCION?Y SE PRESIONO EL PIN 26 SENAL DE SUBIDA
+{                             //Y POR FLANCO DE BAJADA SE APAGA EL LED RESETEO HASTA UNA PROXIMA INTERRUPCION
+ uint32_t reg_val;
+ reg_val = LPC_TIM0->IR;
+ if(reg_val & (1<<4))            //CR0 interrupt SI SE PRODUCE UNA INTERRUPCION SE PONDRA EN 1 << 4
+ {
+  if(LPC_GPIO1->FIOPIN & (1<<26))//high?
+  {
+   LED_ON;
+  }
+  else//else if ( !(FIOPIN & (1<<26)))//por flanco de bajada
+  {
+   LED_OFF;
+  }
+  LPC_TIM0->IR = (1<<4);        //reset interrupt//4 CR0 bandera de interrupción para capturar el evento del canal 0
+ }//es el TOIR                   //OJO AQUI SE VUELVE A PONER1 POR USUARIO PARA RESETEAR LA INTERROCION
+}
+/*
+
+El registro de interrupciones consta de 4 bits para las interrupciones de coincidencia y 4 bits para la captura
+interrumpe Si se genera una interrupción, el bit correspondiente en el IR será alto.
+De lo contrario, el bit será bajo. Escribir una lógica en el bit IR correspondiente restablecerá la
+interrumpir. Escribir un cero no tiene efecto. El acto de eliminar una interrupción para un temporizador
+También borra cualquier solicitud DMA correspondiente
+
+
+*/
+
+int main(void)
+{
+ LPC_GPIO0->FIODIR |= LED;        //LED output
+ volatile static int i = 0 ;
+//setup timer 0 capture
+//Setup P1.26 as CAP0.0
+ LPC_PINCON->PINSEL3 |= (3<<20);    //set capture 0.0
+//Note: reset values of timer registers are 0, so setting them isn't necessary
+ LPC_TIM0->CCR =((1<<0)|(1<<1)|(1<<2));        //capture rising & falling with interrupt
+ LPC_TIM0->TCR = 1;                //start timer
+ NVIC_EnableIRQ(TIMER0_IRQn);
+ while(1)
+ {
+  i++ ;
+ }
+ return 0 ;
+}
+

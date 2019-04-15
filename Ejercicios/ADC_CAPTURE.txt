@@ -1,0 +1,194 @@
+// EJEMPLO DEL PROFE ADC CON CAPTURA DEL VALOR DE LA CONVERSION
+
+#define AddrFIO0DIR 0x2009C000
+#define AddrFIO0SET 0x2009C018
+#define AddrFIO0CLR 0x2009C01C
+#define AddrFIO0PIN 0x2009C014
+#define AddrFIO2DIR 0x2009C040
+#define AddrFIO2SET 0x2009C058
+#define AddrFIO2CLR 0x2009C05C
+#define AddrFIO2PIN 0x2009C054
+#define AddrPCONP 0x400FC0C4
+#define AddrPCLKSEL0 0x400FC1A8
+#define AddrPINSEL3 0x4002C00C
+#define AddrT0EMR 0x4000403C
+#define AddrT0MCR 0x40004014
+#define AddrT0MR0 0x40004018
+#define AddrISER0 0xE000E100
+#define AddrT0TCR 0x40004004
+#define AddrT0IR 0x40004000
+#define AddrT0PR 0x4000400C
+#define AddrAD0CR 0x40034000
+#define AddrAD0INTEN 0x4003400C
+#define AddrPINMODE1 0x4002C044
+#define AddrPINSEL1 0x4002C004
+#define AddrAD0DR0 0x40034010
+#define AddrAD0DR1 0x40034014
+#define AddrADSTAT 0x40034030
+unsigned int volatile * const FIO0DIR =( unsigned int *) AddrFIO0DIR ;
+unsigned int volatile * const FIO0SET =( unsigned int *) AddrFIO0SET ;
+unsigned int volatile * const FIO0CLR =( unsigned int *) AddrFIO0CLR ;
+unsigned int volatile * const FIO0PIN =( unsigned int *) AddrFIO0PIN ;
+unsigned int volatile * const FIO2DIR = ( unsigned int *) AddrFIO2DIR ;
+unsigned int volatile * const FIO2SET = ( unsigned int *) AddrFIO2SET ;
+unsigned int volatile * const FIO2CLR = ( unsigned int *) AddrFIO2CLR ;
+unsigned int volatile * const FIO2PIN = ( unsigned int *) AddrFIO2PIN ;
+unsigned int volatile * const PCONP = ( unsigned int *) AddrPCONP ;
+unsigned int volatile * const PCLKSEL0 = ( unsigned int *) AddrPCLKSEL0 ;
+unsigned int volatile * const PINSEL3 = ( unsigned int *) AddrPINSEL3 ;
+unsigned int volatile * const T0EMR = ( unsigned int *) AddrT0EMR ;
+unsigned int volatile * const T0MCR = ( unsigned int *) AddrT0MCR ;
+unsigned int volatile * const T0MR0 = ( unsigned int *) AddrT0MR0 ;
+unsigned int volatile * const ISER0 = ( unsigned int *) AddrISER0 ;
+unsigned int volatile * const T0TCR = ( unsigned int *) AddrT0TCR ;
+unsigned int volatile * const T0IR = ( unsigned int *) AddrT0IR ;
+unsigned int volatile * const AD0CR = ( unsigned int *) AddrAD0CR ;
+unsigned int volatile * const AD0INTEN = ( unsigned int *) AddrAD0INTEN ;
+unsigned int volatile * const PINMODE1 = ( unsigned int *) AddrPINMODE1 ;
+unsigned int volatile * const PINSEL1 = ( unsigned int *) AddrPINSEL1 ;
+unsigned int volatile * const AD0DR0 = ( unsigned int *) AddrAD0DR0 ;
+unsigned int volatile * const AD0DR1 = ( unsigned int *) AddrAD0DR1 ;
+unsigned int volatile * const ADSTAT = ( unsigned int *) AddrADSTAT ;
+void adcConfig ( void );
+void ADC_IRQHandler ( void );
+void display ( unsigned int num , unsigned int point );
+static int decena = 0 , unidad = 0 ;
+float voltaje = 0.0 ;
+int main ( void ) {
+* PCONP |= ( 1 << 1 );
+/*00 PCLK_peripheral = CCLK/4 00
+01 PCLK_peripheral = CCLK
+10 PCLK_peripheral = CCLK/2
+11 PCLK_peripheral = CCLK/8, except for CAN1, CAN2, and
+CAN filtering when “11” selects = CCLK/6.
+ *
+ *
+ */
+* PCLKSEL0 |= ( 1 << 2 ); //clk timer 0 PERIFERICO CLOCK QUE CLOCK VOY A USAR TIMER CUYA FUNCION ES 10==2 CCLK/2
+* PCLKSEL0 |= ( 3 << 4 ); //cclk/8 timer 1 EL TIMER UNO LO USO PARA CAPTURAR EL DATO Y MOSTRARLO
+* PINSEL3 |= ( 3 << 4 ); //cap1.0 1.18
+* T0EMR |= ( 3 << 4 ); //config match timer 0
+* T0MCR |= 3 ;
+* T0MR0 = 4000 ; //10mSeg para mux ES LA CARGA DEL TIMER0 DE ACUERDO AL PCLK QUE ELEGI
+* ISER0 |= ( 3 << 1 ); //habilita interrupciones timers
+* T0TCR |= 1 ; // habilita counter timer 0
+adcConfig ();
+//* FIO0DIR |= ( 3 << 0 ); //P[0]== H[9] P0[1]==H[10] salidas 11 dos salidoas al control display anodo comun
+* FIO0DIR |= ( 1 << 0 );
+* FIO0DIR |= ( 1 << 1 );
+
+* FIO0DIR |= ( 1 << 22 );
+* FIO2DIR |= ( 255 << 0 ); //salida display a,b,c,d,e,f,g
+while ( 1 ) {
+}
+return 0 ;
+}
+void TIMER0_IRQHandler ( void ){
+//interrupcion para multiplexar y mostrar valores en display
+static int i = 0 ;
+if ( i == 0 ){
+* FIO0CLR |= ( 1 << 0 );
+display ( decena , 1 );
+* FIO0SET |= ( 1 << 1 );
+i = 1 ;
+}
+else if ( i == 1 ){
+* FIO0CLR |= ( 1 << 1 );
+display ( unidad , 0 );
+* FIO0SET |= ( 1 << 0 );
+i = 0 ;
+}
+* T0IR |= 1 ;
+}
+void adcConfig (){
+* PCONP |= ( 1 << 12 ); //Enciende periferico ADC
+* AD0CR |= ( 1 << 21 ); //Enciende periferico ADC
+* PCLKSEL0 |= ( 3 << 24 ); //seleccion de clock
+* AD0CR |= ( 3 << 0 );
+* AD0CR &= ~( 255 << 8 ); //No divido clock
+* AD0CR |= ( 1 << 16 ); //ADC trabajara en modo burst
+* PINMODE1 |= ( 1 << 15 ); //deshabilito resistencias pull up/down P0.23
+* PINMODE1 |= ( 1 << 17 ); //deshabilito resistencias pull up/down P0.24
+* PINSEL1 |= ( 1 << 14 ); //selecciono pin como entrada de ADC P0.23
+* PINSEL1 |= ( 1 << 16 ); //selecciono pin como entrada de ADC P0.24
+* AD0INTEN = 3 ; //habilito interrupciones por ADC en canal 0 y 1
+* ISER0 |= ( 1 << 22 ); //habilito interrupciones por ADC.
+}
+void ADC_IRQHandler ( void ){
+unsigned short volatile ADC0Value = 0 ;
+unsigned short volatile ADC1Value = 0 ;
+ADC1Value = (* AD0DR1 >> 4 ) & 0xFFF ;//AD0DR1  Registro de datos del canal 1 A / D. Este registro contiene el resultado de la mayoría
+//conversión reciente completada en el canal 1.
+/*VER TABLA 535
+ * RESULTADO 15: 4 Cuando DONE es 1, este campo contiene una fracción binaria que representa el voltaje en el AD0 [n]
+pin, ya que cae dentro del rango de VREFP a VREFN. Cero en el campo indica que el voltaje está encendido
+el pin de entrada era menor, igual o cercano al de VREFN, mientras que 0xFFF indica que el
+el voltaje en la entrada era cercano, igual o mayor que en VREFP
+ *
+ *
+ */
+voltaje = ( ADC1Value / 4095.0 )*( 3.4 );
+decena = ( int ) voltaje ;
+unidad = voltaje * 10.0 ;
+unidad = unidad % 10 ;
+ADC0Value = (* AD0DR0 >> 4 ) & 0xFFF ;
+if ( ADC0Value < 2047 ){
+* FIO0SET |= ( 1 << 22 );
+} else {
+* FIO0CLR |= ( 1 << 22 );
+}
+}
+void display ( unsigned int num , unsigned int point ){
+switch ( num ){//ESTA PARA CATODO COMUN
+
+
+case 0 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0x3F ;
+break ;
+case 1 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X06 ;
+break ;
+case 2 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X5B ;
+break ;
+case 3 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X4F ;
+break ;
+case 4 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X66 ;
+break ;
+case 5 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X6D ;
+break ;
+case 6 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X7D ;
+break ;
+case 7 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X07 ;
+break ;
+case 8 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X7F ;
+break ;
+case 9 :
+* FIO2CLR |= 0xFF ;
+* FIO2SET |= 0X6F ;
+break ;
+}
+if ( point == 1 ){
+* FIO2SET |= ( 1 << 7 );
+} else {
+* FIO2CLR |= ( 1 << 7 );
+}
+}
+
+
+
